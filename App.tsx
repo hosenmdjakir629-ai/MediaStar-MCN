@@ -11,6 +11,7 @@ import SupportView from './components/SupportView';
 import OnboardingModal from './components/OnboardingModal';
 import PayoutsView from './components/PayoutsView';
 import SystemLogsView from './components/SystemLogsView';
+import AdminView from './components/AdminView';
 import LoginView from './components/LoginView';
 import HomePage from './components/HomePage';
 import { TabView, AnalyticsData, Creator } from './types';
@@ -181,14 +182,15 @@ const App: React.FC = () => {
         return <AIStrategist creators={creators} />;
       case TabView.INTEGRATIONS:
         return <IntegrationsView />;
-      case TabView.SUPPORT:
-        return <SupportView />;
+      case TabView.SUPPORT: return <SupportView />;
       case TabView.SYSTEM_LOGS:
         return <SystemLogsView />;
+      case TabView.ADMIN_PANEL:
+        return <AdminView />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-gray-500">
-            Work in progress...
+            Work in progress... (Minimal App)
           </div>
         );
     }
@@ -232,7 +234,7 @@ const App: React.FC = () => {
           />
         )}
         
-        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen && window.innerWidth > 1024 ? 'ml-64' : 'ml-0'} relative z-10`}>
+        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen && window.innerWidth > 1024 ? 'lg:ml-64' : 'ml-0'} relative z-10 overflow-auto`}>
           {/* Header - Glassmorphism */}
           <header className="h-20 bg-orbit-900/60 backdrop-blur-xl border-b border-white/5 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -255,7 +257,7 @@ const App: React.FC = () => {
                   placeholder="Global search..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-orbit-500 focus:bg-black/40 transition-all w-64 backdrop-blur-sm"
+                  className="bg-black/20 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-orbit-500 focus:bg-black/40 transition-all w-64 backdrop-blur-sm" 
                 />
               </div>
               
@@ -274,7 +276,7 @@ const App: React.FC = () => {
                       <img src="https://i.pravatar.cc/150?u=admin" alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                    </div>
                    <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center rounded-full backdrop-blur-[1px]" onClick={handleLogout}>
-                        <LogOut size={16} className="text-white" />
+                         <LogOut size={16} className="text-white" />
                    </div>
                 </div>
               </div>

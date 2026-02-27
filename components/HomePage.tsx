@@ -168,7 +168,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden">
+      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden bg-gradient-to-br from-orbit-900 to-black">
         <div className="max-w-7xl mx-auto relative z-10 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-indigo-300 mb-8 animate-fade-in-up">
             <span className="relative flex h-2 w-2">
@@ -178,7 +178,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
             Accepting New Creators for 2026
           </div>
           
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-tight animate-fade-in-up" style={{animationDelay: '0.1s'}}>
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight animate-fade-in-up" style={{animationDelay: '0.1s'}}>
             YouTube Certified <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">MCN Network in Bangladesh</span>
           </h1>
@@ -199,7 +199,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
 
           <div className="mt-20 relative mx-auto max-w-5xl animate-fade-in-up" style={{animationDelay: '0.5s'}}>
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur opacity-30"></div>
-            <div className="relative bg-orbit-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="relative bg-orbit-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2426&auto=format&fit=crop" alt="CMS Dashboard Preview" className="w-full h-auto opacity-90" />
                <div className="absolute inset-0 bg-gradient-to-t from-orbit-900 via-transparent to-transparent"></div>
             </div>

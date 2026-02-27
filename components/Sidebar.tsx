@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, BarChart3, BrainCircuit, Settings, LogOut, Rocket, Wallet, Blocks, Headphones, X, Terminal } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, BrainCircuit, Settings, LogOut, Rocket, Wallet, Blocks, Headphones, X, Terminal, ShieldCheck } from 'lucide-react';
 import { TabView } from '../types';
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
     { id: TabView.INTEGRATIONS, label: 'Integrations', icon: Blocks },
     { id: TabView.SUPPORT, label: 'Support Center', icon: Headphones },
     { id: TabView.SYSTEM_LOGS, label: 'System Logs', icon: Terminal },
+    { id: TabView.ADMIN_PANEL, label: 'Admin Panel', icon: ShieldCheck },
     { id: TabView.SETTINGS, label: 'Settings', icon: Settings },
   ];
 

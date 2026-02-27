@@ -434,7 +434,7 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                              ) : (
                                  <div className="space-y-4">
                                      <div className="flex gap-3">
-                                         <input type="text" value={channelHandleInput} onChange={(e) => setChannelHandleInput(e.target.value)} placeholder="Enter Channel Handle (e.g. @MediaStarMCN)" className="flex-1 bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-red-500 transition-all font-mono shadow-inner" />
+                                         <input type="text" value={channelHandleInput} onChange={(e) => setChannelHandleInput(e.target.value)} placeholder="Enter Channel Handle (e.g. @OrbitXMCN)" className="flex-1 bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-red-500 transition-all font-mono shadow-inner" />
                                          <button onClick={handleConnectChannel} disabled={!channelHandleInput || isSyncing} className="px-6 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-red-600/20">
                                              {isSyncing ? <RefreshCw className="animate-spin" size={18} /> : <LinkIcon size={18} />}
                                              <span>SYNC</span>

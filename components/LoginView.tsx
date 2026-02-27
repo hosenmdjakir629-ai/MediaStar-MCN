@@ -52,7 +52,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
           <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-orbit-500 to-orbit-accent shadow-lg shadow-orbit-500/30 mb-4">
             <Rocket className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">MediaStar MCN</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+            <span className="font-bold">OrbitX MCN</span>
+            <span className="text-sm font-medium block text-gray-400 mt-1">- Powered by MediaStar</span>
+          </h1>
           <p className="text-sm text-gray-400 px-4">Enter your credentials to access the admin portal.</p>
         </div>
 
@@ -130,7 +133,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
 
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              Protected by MediaStar MCN Secure Guard. <br/>
+              Protected by OrbitX MCN Secure Guard. <br/>
               Authorized access only.
             </p>
           </div>

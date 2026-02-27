@@ -13,7 +13,7 @@ export const generateContentStrategy = async (
 ): Promise<AIStrategyResponse | null> => {
   try {
     const prompt = `
-      You are an expert YouTube content strategist for the MediaStar MCN Network.
+      You are an expert YouTube content strategist for the OrbitX MCN Network.
       Analyze the following context and provide actionable advice.
       
       Channel Name: ${channelName}
@@ -63,7 +63,7 @@ export const generateContentStrategy = async (
     return JSON.parse(text) as AIStrategyResponse;
 
   } catch (error) {
-    console.warn("MediaStar MCN: Gemini API error or missing key. Returning mock strategy.", error);
+    console.warn("OrbitX MCN: Gemini API error or missing key. Returning mock strategy.", error);
     
     // Simulate network delay for realism
     await new Promise(resolve => setTimeout(resolve, 1500));

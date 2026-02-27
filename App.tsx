@@ -15,40 +15,39 @@ import HomePage from './components/HomePage';
 import { TabView, AnalyticsData, Creator } from './types';
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
 
-// Mock Data
-const MOCK_ANALYTICS: AnalyticsData[] = Array.from({ length: 30 }, (_, i) => ({
-  date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-  views: Math.floor(Math.random() * 500000) + 1000000,
-  revenue: Math.floor(Math.random() * 5000) + 20000,
-  subs: Math.floor(Math.random() * 1000) + 500,
-}));
-
-const INITIAL_CREATORS: Creator[] = [
-  { id: '1', name: 'Alex Rivera', channelName: 'TechFlow', subscribers: 2400000, totalViews: 145000000, videoCount: 432, revenue: 15400, niche: 'Tech', avatarUrl: 'https://picsum.photos/100?random=1', status: 'Active', trend: 'up' },
-  { id: '2', name: 'Sarah Chen', channelName: 'Chen Cooks', subscribers: 890000, totalViews: 45000000, videoCount: 156, revenue: 8200, niche: 'Food', avatarUrl: 'https://picsum.photos/100?random=2', status: 'Active', trend: 'up' },
-  { id: '3', name: 'Mike Ross', channelName: 'Retro Gaming', subscribers: 120000, totalViews: 5000000, videoCount: 890, revenue: 1200, niche: 'Gaming', avatarUrl: 'https://picsum.photos/100?random=3', status: 'Pending', trend: 'flat' },
-  { id: '4', name: 'Emma Wilson', channelName: 'Daily Vlog', subscribers: 3500000, totalViews: 200000000, videoCount: 1240, revenue: 24000, niche: 'Lifestyle', avatarUrl: 'https://picsum.photos/100?random=4', status: 'Active', trend: 'down' },
-  { id: '5', name: 'John Doe', channelName: 'Crypto King', subscribers: 50000, totalViews: 1000000, videoCount: 45, revenue: 400, niche: 'Finance', avatarUrl: 'https://picsum.photos/100?random=5', status: 'Suspended', trend: 'down' },
-];
-
-const LOCAL_STORAGE_KEY = 'mediastar-mcn-creators';
-
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [currentTab, setCurrentTab] = useState<TabView>(TabView.DASHBOARD);
   
-  const [creators, setCreators] = useState<Creator[]>(() => {
-    try {
-      const storedCreators = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (storedCreators) {
-        return JSON.parse(storedCreators);
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [creatorsRes, analyticsRes] = await Promise.all([
+          fetch('/api/creators'),
+          fetch('/api/analytics')
+        ]);
+        
+        if (creatorsRes.ok && analyticsRes.ok) {
+          const [creatorsData, analyticsData] = await Promise.all([
+            creatorsRes.json(),
+            analyticsRes.json()
+          ]);
+          setCreators(creatorsData);
+          setAnalytics(analyticsData);
+        }
+      } catch (error) {
+        console.error("Error fetching data from API", error);
+      } finally {
+        setIsLoadingData(false);
       }
-    } catch (error) {
-      console.error("Error parsing creators from localStorage", error);
-    }
-    return INITIAL_CREATORS;
-  });
+    };
+    fetchData();
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -77,14 +76,6 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(creators));
-    } catch (error) {
-      console.error("Error saving creators to localStorage", error);
-    }
-  }, [creators]);
-
   const handleLogin = (status: boolean) => {
       setIsAuthenticated(status);
       setShowLogin(false);
@@ -101,9 +92,8 @@ const App: React.FC = () => {
     setShowOnboarding(false);
   };
 
-  const handleAddCreator = (data?: Partial<Creator>) => {
-    const newCreator: Creator = {
-      id: Math.random().toString(36).substr(2, 9),
+  const handleAddCreator = async (data?: Partial<Creator>) => {
+    const newCreatorData = {
       name: data?.name || 'New Creator',
       channelName: data?.channelName || 'New Channel',
       subscribers: data?.subscribers || 0,
@@ -116,27 +106,69 @@ const App: React.FC = () => {
       trend: 'flat',
       linkedChannelHandle: data?.linkedChannelHandle
     };
-    setCreators([newCreator, ...creators]);
-  };
 
-  const handleDeleteCreator = (id: string) => {
-    if (window.confirm('Are you sure you want to remove this creator?')) {
-        setCreators(creators.filter(c => c.id !== id));
+    try {
+      const response = await fetch('/api/creators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCreatorData),
+      });
+      if (response.ok) {
+        const savedCreator = await response.json();
+        setCreators([savedCreator, ...creators]);
+      }
+    } catch (error) {
+      console.error("Error adding creator to API", error);
     }
   };
 
-  const handleUpdateCreator = (updatedCreator: Creator) => {
-    setCreators(creators.map(c => c.id === updatedCreator.id ? updatedCreator : c));
+  const handleDeleteCreator = async (id: string) => {
+    if (window.confirm('Are you sure you want to remove this creator?')) {
+      try {
+        const response = await fetch(`/api/creators/${id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          setCreators(creators.filter(c => c.id !== id));
+        }
+      } catch (error) {
+        console.error("Error deleting creator from API", error);
+      }
+    }
+  };
+
+  const handleUpdateCreator = async (updatedCreator: Creator) => {
+    try {
+      const response = await fetch(`/api/creators/${updatedCreator.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedCreator),
+      });
+      if (response.ok) {
+        setCreators(creators.map(c => c.id === updatedCreator.id ? updatedCreator : c));
+      }
+    } catch (error) {
+      console.error("Error updating creator in API", error);
+    }
   };
 
   const renderContent = () => {
+    if (isLoadingData) {
+      return (
+        <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+          <div className="w-12 h-12 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-400 font-medium animate-pulse">Syncing with MediaStar MCN Database...</p>
+        </div>
+      );
+    }
+
     switch (currentTab) {
       case TabView.DASHBOARD:
-        return <DashboardView data={MOCK_ANALYTICS} creators={creators} onViewCreators={() => setCurrentTab(TabView.CREATORS)} />;
+        return <DashboardView data={analytics} creators={creators} onViewCreators={() => setCurrentTab(TabView.CREATORS)} />;
       case TabView.CREATORS:
         return <CreatorsView creators={creators} onAddCreator={handleAddCreator} onDeleteCreator={handleDeleteCreator} onUpdateCreator={handleUpdateCreator} />;
       case TabView.ANALYTICS:
-        return <AnalyticsView data={MOCK_ANALYTICS} />;
+        return <AnalyticsView data={analytics} />;
       case TabView.PAYOUTS:
         return <PayoutsView />;
       case TabView.SETTINGS:

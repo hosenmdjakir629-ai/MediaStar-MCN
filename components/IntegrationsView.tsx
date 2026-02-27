@@ -74,7 +74,7 @@ const IntegrationsView: React.FC = () => {
                 <h1 className="text-3xl font-bold text-white">Integrations Hub</h1>
             </div>
             <p className="text-gray-300 text-lg">
-                Supercharge your network operations. Connect MediaStar MCN to your favorite tools for seamless communication, automated finance, and streamlined workflows.
+                Supercharge your network operations. Connect OrbitX MCN to your favorite tools for seamless communication, automated finance, and streamlined workflows.
             </p>
         </div>
       </div>
@@ -192,7 +192,7 @@ const IntegrationsView: React.FC = () => {
                                   <ExternalLink size={24} className="text-gray-400" />
                               </div>
                               <p className="text-gray-300">
-                                  You will be redirected to <strong>{selectedIntegration.name}</strong> to authorize MediaStar MCN.
+                                  You will be redirected to <strong>{selectedIntegration.name}</strong> to authorize OrbitX MCN.
                               </p>
                           </div>
                       )}

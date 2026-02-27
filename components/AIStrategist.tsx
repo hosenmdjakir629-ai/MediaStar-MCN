@@ -39,7 +39,11 @@ const AIStrategist: React.FC<AIStrategistProps> = ({ creators = [] }) => {
           <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
             <Sparkles className="text-white w-5 h-5" />
           </div>
-          <h2 className="text-xl font-bold text-white">MediaStar MCN AI Strategist</h2>
+          <h2 className="text-xl font-bold text-white">
+            <span className="font-bold">OrbitX MCN</span>
+            <span className="text-sm font-medium ml-2 text-gray-400">- Powered by MediaStar</span>
+            <span className="block text-xs text-orbit-400 mt-0.5">AI Strategist</span>
+          </h2>
         </div>
         
         <div className="space-y-6">

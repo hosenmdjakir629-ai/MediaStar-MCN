@@ -418,7 +418,7 @@ const PayoutsView: React.FC = () => {
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-2">
                                     <div className="w-10 h-10 bg-orbit-900 rounded-xl flex items-center justify-center text-white"><Rocket size={20} fill="currentColor" /></div>
-                                    <span className="text-2xl font-black tracking-tighter">MediaStar MCN</span>
+                                    <span className="text-2xl font-black tracking-tighter">OrbitX MCN</span>
                                 </div>
                                 <div className="text-right">
                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Txn ID</span>
@@ -437,7 +437,7 @@ const PayoutsView: React.FC = () => {
                                 <div className="flex justify-between text-sm"><span className="text-gray-500 font-medium">Status:</span><span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-widest">{receiptTransaction.status}</span></div>
                             </div>
 
-                            <div className="pt-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Thank you for being part of MediaStar MCN</div>
+                            <div className="pt-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Thank you for being part of OrbitX MCN</div>
                         </div>
                     </div>
                     <div className="mt-6 flex gap-3">

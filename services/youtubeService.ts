@@ -49,7 +49,7 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
   try {
     // If no key is present, return mock data immediately
     if (!apiKey || apiKey.includes('YOUR_API_KEY')) {
-      console.warn("MediaStar MCN: No valid API_KEY found. Returning mock YouTube data.");
+      console.warn("OrbitX MCN: No valid API_KEY found. Returning mock YouTube data.");
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 800));
       return getMockData();
@@ -113,7 +113,7 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
 
     return null;
   } catch (error) {
-    console.error("MediaStar MCN: Error fetching YouTube data, falling back to mock.", error);
+    console.error("OrbitX MCN: Error fetching YouTube data, falling back to mock.", error);
     // Return mock data on API failure to keep app usable
     return getMockData();
   }

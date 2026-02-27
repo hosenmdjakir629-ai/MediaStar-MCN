@@ -44,7 +44,7 @@ const SettingsView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Network Name</label>
-                <input type="text" defaultValue="MediaStar MCN" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white focus:border-orbit-500 outline-none transition-colors" />
+                <input type="text" defaultValue="OrbitX MCN" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white focus:border-orbit-500 outline-none transition-colors" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Admin Email</label>

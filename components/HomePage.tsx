@@ -24,7 +24,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
   const [verificationError, setVerificationError] = useState('');
 
   const FAQS = [
-    { q: "What are the requirements to join MediaStar MCN?", a: "We typically look for channels with at least 1,000 subscribers and 4,000 watch hours, adhering to YouTube's monetization policies. However, we review high-potential channels individually." },
+    { q: "What are the requirements to join OrbitX MCN?", a: "We typically look for channels with at least 1,000 subscribers and 4,000 watch hours, adhering to YouTube's monetization policies. However, we review high-potential channels individually." },
     { q: "What is the revenue share model?", a: "Our standard contract starts at an 80/20 split (80% to you). High-performing partners can qualify for 90/10 or even 95/5 splits based on monthly view count." },
     { q: "How often do I get paid?", a: "We offer monthly payouts by default between the 21st and 26th. Qualifying growth partners can receive weekly payouts. We support Bank Transfer, bKash, and PayPal." },
     { q: "Can you help with copyright claims?", a: "Yes! Our Content ID team manually handles dispute resolution, protecting your content from piracy and helping you claim revenue from third-party re-uploads." },
@@ -118,7 +118,10 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Rocket className="text-white w-5 h-5" />
             </div>
-            <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">MediaStar MCN</span>
+            <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">
+              <span className="font-bold">OrbitX MCN</span>
+              <span className="text-sm font-medium ml-2 opacity-80">- Powered by MediaStar</span>
+            </span>
           </div>
           
           <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-300">
@@ -208,7 +211,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
       <section id="features" className="py-24 relative z-10 bg-orbit-800/30">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Top Creators Choose MediaStar MCN</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Top Creators Choose OrbitX MCN</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">We provide the infrastructure so you can focus on the content.</p>
           </div>
 
@@ -363,9 +366,12 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center"><Rocket className="text-white w-4 h-4" /></div>
-            <span className="text-lg font-bold text-white">MediaStar MCN</span>
+            <span className="text-lg font-bold text-white">
+              <span className="font-bold">OrbitX MCN</span>
+              <span className="text-xs font-medium ml-2 opacity-60">- Powered by MediaStar</span>
+            </span>
           </div>
-          <div className="text-sm text-gray-500">© 2026 MediaStar MCN Network. All rights reserved.</div>
+          <div className="text-sm text-gray-500">© 2026 OrbitX MCN Network. All rights reserved.</div>
         </div>
       </footer>
 
@@ -425,7 +431,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
                         <div className="animate-fade-in">
                             <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30 animate-bounce-slow"><Check size={32} className="text-white" /></div>
                             <h4 className="text-2xl font-bold text-white mb-2">Payment Verified!</h4>
-                            <p className="text-gray-400 text-sm mb-6">Your transaction has been successfully verified. Welcome to MediaStar MCN!</p>
+                            <p className="text-gray-400 text-sm mb-6">Your transaction has been successfully verified. Welcome to OrbitX MCN!</p>
                             <button onClick={() => { setShowPaymentModal(false); onLoginClick(); }} className="w-full py-3.5 bg-white text-orbit-900 hover:bg-gray-200 rounded-xl font-bold transition-colors shadow-xl">Proceed to Registration</button>
                         </div>
                     )}

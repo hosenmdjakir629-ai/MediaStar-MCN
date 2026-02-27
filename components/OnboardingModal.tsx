@@ -10,7 +10,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete }) => {
 
   const steps = [
     {
-      title: "Welcome to MediaStar MCN",
+      title: "Welcome to OrbitX MCN",
       description: "Your all-in-one command center for next-gen creator management. Scale your network with powerful tools and AI insights.",
       icon: Rocket,
       color: "bg-orbit-500",

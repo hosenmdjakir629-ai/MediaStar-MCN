@@ -15,7 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
     { id: TabView.CREATORS, label: 'Creators', icon: Users },
     { id: TabView.ANALYTICS, label: 'Analytics', icon: BarChart3 },
     { id: TabView.PAYOUTS, label: 'Payouts', icon: Wallet },
-    { id: TabView.AI_STRATEGIST, label: 'MediaStar MCN AI Strategy', icon: BrainCircuit },
+    { id: TabView.AI_STRATEGIST, label: 'OrbitX MCN AI Strategy', icon: BrainCircuit },
     { id: TabView.INTEGRATIONS, label: 'Integrations', icon: Blocks },
     { id: TabView.SUPPORT, label: 'Support Center', icon: Headphones },
     { id: TabView.SETTINGS, label: 'Settings', icon: Settings },
@@ -36,7 +36,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
           </div>
           <div>
             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">
-              MediaStar MCN
+              <span className="font-bold">OrbitX MCN</span>
+              <span className="text-[10px] text-gray-500 block font-medium">Powered by MediaStar</span>
             </h1>
             <p className="text-[10px] text-gray-400 font-medium tracking-wider uppercase">CMS Network</p>
           </div>

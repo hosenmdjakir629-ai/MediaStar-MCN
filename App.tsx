@@ -10,13 +10,16 @@ import IntegrationsView from './components/IntegrationsView';
 import SupportView from './components/SupportView';
 import OnboardingModal from './components/OnboardingModal';
 import PayoutsView from './components/PayoutsView';
+import SystemLogsView from './components/SystemLogsView';
 import LoginView from './components/LoginView';
 import HomePage from './components/HomePage';
 import { TabView, AnalyticsData, Creator } from './types';
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('orbitx_token');
+  });
   const [showLogin, setShowLogin] = useState(false);
   const [currentTab, setCurrentTab] = useState<TabView>(TabView.DASHBOARD);
   
@@ -82,6 +85,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+      localStorage.removeItem('orbitx_token');
       setIsAuthenticated(false);
       setShowOnboarding(false);
       setCurrentTab(TabView.DASHBOARD);
@@ -179,6 +183,8 @@ const App: React.FC = () => {
         return <IntegrationsView />;
       case TabView.SUPPORT:
         return <SupportView />;
+      case TabView.SYSTEM_LOGS:
+        return <SystemLogsView />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-gray-500">

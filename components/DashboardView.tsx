@@ -17,6 +17,17 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Backend Online</span>
+          </div>
+          <div className="text-xs text-gray-500">v1.0.4 &bull; OrbitX MCN Central</div>
+        </div>
+        <div className="text-xs text-gray-400 font-medium">Last synced: {new Date().toLocaleTimeString()}</div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Creators" value={creators.length.toLocaleString()} change="+12.5%" trend="up" icon={Users} color="indigo" />
         <StatCard title="Monthly Views" value="84.2M" change="+8.1%" trend="up" icon={Eye} color="cyan" />

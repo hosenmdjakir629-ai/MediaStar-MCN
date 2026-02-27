@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save, Bell, User, Check, Shield, Globe, FileText, HelpCircle, X, AlertCircle, Play, Users, Plus, Trash2, Key } from 'lucide-react';
+import { Save, Bell, User, Check, Shield, Globe, FileText, HelpCircle, X, AlertCircle, Play, Users, Plus, Trash2, Key, Activity } from 'lucide-react';
 
 const SettingsView: React.FC = () => {
   const [saved, setSaved] = useState(false);
@@ -50,6 +50,43 @@ const SettingsView: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-400 mb-2">Admin Email</label>
                 <input type="email" defaultValue="admin@mediastar.network" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white focus:border-orbit-500 outline-none transition-colors" />
             </div>
+        </div>
+      </div>
+
+      {/* Server Health (New) */}
+      <div className="bg-orbit-800 rounded-2xl p-8 border border-orbit-700">
+        <div className="flex items-center space-x-3 mb-6">
+            <Activity className="text-emerald-400" />
+            <h3 className="text-xl font-bold text-white">Server Health & API Status</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">API Status</p>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span className="text-lg font-bold text-white">Operational</span>
+                </div>
+            </div>
+            <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Response Time</p>
+                <span className="text-lg font-bold text-white">24ms</span>
+            </div>
+            <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Uptime</p>
+                <span className="text-lg font-bold text-white">99.98%</span>
+            </div>
+        </div>
+        <div className="mt-4 p-4 bg-orbit-900/30 border border-orbit-700/50 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-orbit-500/10 rounded-lg text-orbit-500">
+                    <Globe size={18} />
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-white">Primary Endpoint</p>
+                    <p className="text-xs text-gray-500">https://api.orbitx.mcn/v1</p>
+                </div>
+            </div>
+            <button className="text-xs font-bold text-orbit-500 hover:text-orbit-400 transition-colors">Test Connection</button>
         </div>
       </div>
 

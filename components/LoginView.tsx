@@ -13,20 +13,32 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      if (username === 'Jakirhosen150' && password === '525477JAKIR@') {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Store token if needed
+        localStorage.setItem('orbitx_token', data.token);
         onLogin(true);
       } else {
-        setError('Invalid credentials. Please contact the network director.');
-        setIsLoading(false);
+        setError(data.message || 'Invalid credentials. Please contact the network director.');
       }
-    }, 1000);
+    } catch (err) {
+      setError('Connection error. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

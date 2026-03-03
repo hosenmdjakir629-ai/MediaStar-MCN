@@ -32,7 +32,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete }) => {
     },
     {
       title: "Localized for Bangladesh",
-      description: "Seamless payouts to bKash, Nagad, Rocket, Upay, Tap, and direct transfers to over 50+ local banks. Managing finance has never been easier.",
+      description: "Seamless payouts to Nagad, Rocket, Upay, Tap, and direct transfers to over 50+ local banks. Managing finance has never been easier.",
       icon: Wallet,
       color: "bg-green-500",
        image: "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=800&auto=format&fit=crop"

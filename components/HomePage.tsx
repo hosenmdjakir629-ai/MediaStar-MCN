@@ -16,17 +16,10 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
   // FAQ State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
-  // Payment Modal State
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<'initial' | 'verify' | 'completed'>('initial');
-  const [trxID, setTrxID] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationError, setVerificationError] = useState('');
-
   const FAQS = [
     { q: "What are the requirements to join OrbitX MCN?", a: "We typically look for channels with at least 1,000 subscribers and 4,000 watch hours, adhering to YouTube's monetization policies. However, we review high-potential channels individually." },
     { q: "What is the revenue share model?", a: "Our standard contract starts at an 80/20 split (80% to you). High-performing partners can qualify for 90/10 or even 95/5 splits based on monthly view count." },
-    { q: "How often do I get paid?", a: "We offer monthly payouts by default between the 21st and 26th. Qualifying growth partners can receive weekly payouts. We support Bank Transfer, bKash, and PayPal." },
+    { q: "How often do I get paid?", a: "We offer monthly payouts by default between the 21st and 26th. Qualifying growth partners can receive weekly payouts. We support Bank Transfer and PayPal." },
     { q: "Can you help with copyright claims?", a: "Yes! Our Content ID team manually handles dispute resolution, protecting your content from piracy and helping you claim revenue from third-party re-uploads." },
     { q: "Is there a lock-in contract?", a: "We offer flexible 30-day rolling contracts for our Starter plan. Growth and Enterprise plans may have specific terms to unlock advanced funding and dedicated support." },
   ];
@@ -38,16 +31,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Reset payment state when modal opens/closes
-  useEffect(() => {
-      if(!showPaymentModal) {
-          setPaymentStep('initial');
-          setTrxID('');
-          setVerificationError('');
-          setIsVerifying(false);
-      }
-  }, [showPaymentModal]);
 
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
@@ -72,35 +55,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           setContactForm({ name: '', email: '', message: '' });
           setTimeout(() => setFormStatus('idle'), 3000);
       }, 1500);
-  };
-
-  const handleApplyClick = () => {
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentLinkClick = () => {
-      window.open('https://shop.bkash.com/online-shop01978481393/paymentlink', '_blank');
-      setPaymentStep('verify');
-  };
-
-  const handleVerifyPayment = () => {
-      if (!trxID.trim()) {
-          setVerificationError('Please enter the Transaction ID sent to your mobile.');
-          return;
-      }
-      
-      setIsVerifying(true);
-      setVerificationError('');
-
-      // Simulate API Call to bKash Payment Execution
-      setTimeout(() => {
-          if (trxID.length >= 8) {
-              setPaymentStep('completed');
-          } else {
-              setVerificationError('Invalid Transaction ID. Please check and try again.');
-          }
-          setIsVerifying(false);
-      }, 2000);
   };
 
   return (
@@ -138,10 +92,10 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
               Log In
             </button>
             <button 
-              onClick={handleApplyClick}
+              onClick={onLoginClick}
               className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all transform hover:scale-105 shadow-lg shadow-white/10 flex items-center gap-2"
             >
-              <span className="hidden xs:block">Apply to Join</span>
+              <span className="hidden xs:block">Apply Now</span>
               <span className="xs:hidden">Apply</span>
               <ArrowRight size={16} />
             </button>
@@ -162,6 +116,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
               <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="text-left text-lg font-medium text-indigo-400">Log In</button>
+              <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center">Apply Now</button>
             </div>
           </div>
         )}
@@ -188,8 +143,8 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
-            <button onClick={handleApplyClick} className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl font-bold text-lg text-white shadow-xl shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
-              Apply to Join
+            <button onClick={onLoginClick} className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl font-bold text-lg text-white shadow-xl shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
+              Apply Now
             </button>
             <button className="w-full sm:w-auto px-8 py-4 bg-orbit-800 hover:bg-orbit-700 border border-orbit-700 rounded-2xl font-bold text-lg text-white transition-all flex items-center justify-center gap-2 group">
               <Play size={20} className="fill-white group-hover:scale-110 transition-transform" />
@@ -374,71 +329,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           <div className="text-sm text-gray-500">© 2026 OrbitX MCN Network. All rights reserved.</div>
         </div>
       </footer>
-
-      {/* Payment Gateway Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowPaymentModal(false)}>
-            <div className="bg-orbit-900 border border-orbit-700 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
-                <div className="p-6 border-b border-orbit-700 bg-orbit-800 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        {paymentStep === 'completed' ? <span className="text-green-400 flex items-center gap-2"><CheckCircle size={20} /> Success</span> : 'Secure Payment Gateway'}
-                    </h3>
-                    <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
-                </div>
-                <div className="p-6 space-y-6 text-center">
-                    {/* bKash Merchant Box - Updated with stable official icon URL */}
-                    <div className="flex flex-col items-center justify-center mb-2">
-                        <div className="w-24 h-24 bg-[#e2136e] rounded-3xl flex items-center justify-center shadow-xl shadow-[#e2136e]/20 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                            {/* Corrected Stable bKash Logo via Wikimedia for maximum availability */}
-                            <img 
-                                src="https://upload.wikimedia.org/wikipedia/commons/e/e1/BKash_Logo_Icon.svg" 
-                                alt="bKash Merchant" 
-                                className="w-16 h-16 object-contain brightness-0 invert drop-shadow-md transform group-hover:scale-110 transition-transform duration-500" 
-                            />
-                        </div>
-                        <div className="mt-4 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full flex flex-col items-center">
-                            <span className="text-[#e2136e] font-black text-xs uppercase tracking-[0.2em]">Merchant Account</span>
-                            <span className="text-gray-300 font-mono text-sm font-bold mt-1 tracking-wider">01978481393</span>
-                        </div>
-                    </div>
-                    {paymentStep === 'initial' && (
-                        <div className="animate-fade-in">
-                            <h4 className="text-lg font-bold text-white mb-2">Initiate Payment</h4>
-                            <p className="text-gray-400 text-sm mb-6">Click below to securely pay via the official bKash gateway.</p>
-                            <button onClick={handlePaymentLinkClick} className="w-full py-3.5 bg-[#e2136e] hover:bg-[#c40f5f] text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 mb-4 group">
-                                <span>Pay with bKash</span>
-                                <ExternalLink size={18} className="group-hover:translate-x-1 transition-transform" />
-                            </button>
-                            <button onClick={() => setPaymentStep('verify')} className="text-sm text-gray-500 hover:text-white transition-colors underline">I have already paid</button>
-                        </div>
-                    )}
-                    {paymentStep === 'verify' && (
-                        <div className="animate-fade-in text-left">
-                            <h4 className="text-lg font-bold text-white mb-1 text-center">Verify Transaction</h4>
-                            <p className="text-gray-400 text-sm mb-6 text-center">Enter the Transaction ID (TrxID) from your bKash SMS.</p>
-                            <div className="space-y-4">
-                                <input type="text" value={trxID} onChange={(e) => setTrxID(e.target.value)} placeholder="e.g. 9JKS82LL" className="w-full bg-orbit-800 border border-orbit-600 rounded-xl px-4 py-3 text-white font-mono text-center tracking-widest uppercase focus:border-[#e2136e] outline-none transition-colors" />
-                                {verificationError && <div className="text-red-400 text-xs flex items-center gap-1"><X size={12} /> {verificationError}</div>}
-                                <button onClick={handleVerifyPayment} disabled={isVerifying} className="w-full py-3.5 bg-orbit-500 hover:bg-orbit-400 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                    {isVerifying ? <RefreshCw size={18} className="animate-spin" /> : <><span>Verify Payment</span><ArrowRight size={18} /></>}
-                                </button>
-                                <button onClick={() => setPaymentStep('initial')} className="w-full text-sm text-gray-500 hover:text-white transition-colors">Back to Payment</button>
-                            </div>
-                        </div>
-                    )}
-                    {paymentStep === 'completed' && (
-                        <div className="animate-fade-in">
-                            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30 animate-bounce-slow"><Check size={32} className="text-white" /></div>
-                            <h4 className="text-2xl font-bold text-white mb-2">Payment Verified!</h4>
-                            <p className="text-gray-400 text-sm mb-6">Your transaction has been successfully verified. Welcome to OrbitX MCN!</p>
-                            <button onClick={() => { setShowPaymentModal(false); onLoginClick(); }} className="w-full py-3.5 bg-white text-orbit-900 hover:bg-gray-200 rounded-xl font-bold transition-colors shadow-xl">Proceed to Registration</button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-      )}
     </div>
   );
 };

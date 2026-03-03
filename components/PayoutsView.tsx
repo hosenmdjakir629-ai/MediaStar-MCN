@@ -13,11 +13,8 @@ interface Transaction {
 }
 
 const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 'TXN-8921', date: 'Oct 21, 2023', amount: 12500, method: 'bKash (Personal)', status: 'Paid', reference: '9JKS82LL' },
   { id: 'TXN-8543', date: 'Sep 21, 2023', amount: 14200, method: 'Islami Bank BD', status: 'Paid', reference: 'IBBL-2910' },
   { id: 'TXN-8110', date: 'Aug 21, 2023', amount: 11050, method: 'Nagad (Personal)', status: 'Paid', reference: 'NGD-9921' },
-  { id: 'TXN-7902', date: 'Jul 21, 2023', amount: 9500, method: 'bKash (Personal)', status: 'Rejected', reference: 'ERR-291' },
-  { id: 'TXN-7541', date: 'Jun 21, 2023', amount: 10800, method: 'bKash (Personal)', status: 'Paid', reference: '8KKS92MM' },
 ];
 
 const PayoutsView: React.FC = () => {
@@ -37,9 +34,8 @@ const PayoutsView: React.FC = () => {
   const [dailyUsed] = useState(12500);
 
   // Payment Configuration State
-  const [paymentMethod, setPaymentMethod] = useState('bkash');
+  const [paymentMethod, setPaymentMethod] = useState('nagad');
   const [mfsDetails, setMfsDetails] = useState<{ [key: string]: string }>({
-    bkash: '01978481393',
     nagad: '01812345678',
     rocket: '',
     upay: '',
@@ -55,9 +51,6 @@ const PayoutsView: React.FC = () => {
   const [isEditingConfig, setIsEditingConfig] = useState(false);
 
   // Constants
-  const BKASH_COLOR = '#e2136e';
-  const BKASH_LOGO_URL = 'https://upload.wikimedia.org/wikipedia/commons/e/e1/BKash_Logo_Icon.svg';
-
   const banks = [
     "AB Bank Limited", "Agrani Bank Limited", "Al-Arafah Islami Bank Limited", "Bank Asia Limited",
     "BRAC Bank Limited", "City Bank Limited", "Dutch-Bangla Bank Limited (DBBL)", "Eastern Bank Limited (EBL)",
@@ -67,13 +60,6 @@ const PayoutsView: React.FC = () => {
 
   const getMethodIcon = (method: string) => {
       const normalized = method.toLowerCase();
-      if (normalized.includes('bkash')) {
-          return (
-              <div className="w-5 h-5 bg-[#e2136e] rounded flex items-center justify-center overflow-hidden shrink-0">
-                  <img src={BKASH_LOGO_URL} alt="bKash" className="w-3.5 h-3.5 object-contain brightness-0 invert" />
-              </div>
-          );
-      }
       if (normalized.includes('nagad')) return <div className="w-5 h-5 flex items-center justify-center font-bold text-white bg-[#ec1d24] rounded text-[10px] shrink-0">N</div>;
       if (normalized.includes('rocket')) return <div className="w-5 h-5 flex items-center justify-center font-bold text-white bg-[#8c3494] rounded text-[10px] shrink-0">R</div>;
       return <Building2 className="w-5 h-5 text-blue-400 shrink-0" />;
@@ -231,8 +217,8 @@ const PayoutsView: React.FC = () => {
 
                 <div className="space-y-8 flex-1">
                     {/* Method Selection Grid */}
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                        {['bkash', 'nagad', 'rocket', 'upay', 'tap', 'bank'].map((method) => {
+                    <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                        {['nagad', 'rocket', 'upay', 'tap', 'bank'].map((method) => {
                             const isActive = paymentMethod === method;
                             return (
                                 <button 
@@ -242,12 +228,6 @@ const PayoutsView: React.FC = () => {
                                 >
                                     {isActive && <div className="absolute top-2 right-2 text-orbit-500 bg-white rounded-full p-0.5"><Check size={10} strokeWidth={4} /></div>}
                                     
-                                    {method === 'bkash' && (
-                                        <div className="w-10 h-10 bg-[#e2136e] rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform relative overflow-hidden">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                                            <img src={BKASH_LOGO_URL} alt="bKash" className="w-6 h-6 object-contain brightness-0 invert z-10" />
-                                        </div>
-                                    )}
                                     {method === 'nagad' && <div className="w-10 h-10 bg-[#ec1d24] rounded-xl flex items-center justify-center shadow-lg font-black text-white text-lg group-hover:scale-110 transition-transform">N</div>}
                                     {method === 'rocket' && <div className="w-10 h-10 bg-[#8c3494] rounded-xl flex items-center justify-center shadow-lg font-black text-white text-lg group-hover:scale-110 transition-transform">R</div>}
                                     {method === 'upay' && <div className="w-10 h-10 bg-[#00a1e0] rounded-xl flex items-center justify-center shadow-lg font-black text-white text-lg group-hover:scale-110 transition-transform">U</div>}
@@ -262,30 +242,6 @@ const PayoutsView: React.FC = () => {
 
                     {/* Specific Detail Input */}
                     <div className="p-6 bg-orbit-900/40 rounded-3xl border border-orbit-700/50 min-h-[160px] flex items-center">
-                        {paymentMethod === 'bkash' && (
-                            <div className="w-full flex flex-col md:flex-row items-center gap-8 animate-fade-in">
-                                <div className="flex flex-col items-center shrink-0">
-                                    <div className="w-20 h-20 bg-[#e2136e] rounded-2xl flex items-center justify-center shadow-2xl shadow-[#e2136e]/20 relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
-                                        <img src={BKASH_LOGO_URL} alt="bKash" className="w-12 h-12 object-contain brightness-0 invert z-10" />
-                                    </div>
-                                    <div className="mt-3 text-[10px] font-black text-[#e2136e] uppercase tracking-[0.2em]">Verified MFS</div>
-                                </div>
-                                <div className="flex-1 space-y-2 w-full">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">bKash Account Number (Personal/Agent)</label>
-                                    <input 
-                                        type="text" 
-                                        value={mfsDetails.bkash} 
-                                        onChange={(e) => setMfsDetails({...mfsDetails, bkash: e.target.value})} 
-                                        disabled={!isEditingConfig}
-                                        placeholder="+880 19XX XXXXXX"
-                                        className={`w-full bg-orbit-900/60 border rounded-2xl px-5 py-4 text-white font-mono text-xl tracking-widest outline-none transition-all ${!isEditingConfig ? 'border-orbit-700/30 text-gray-500 cursor-not-allowed' : 'border-[#e2136e]/40 focus:border-[#e2136e] focus:ring-1 focus:ring-[#e2136e]/20 shadow-inner'}`}
-                                    />
-                                    <p className="text-[10px] text-gray-600 ml-1">Daily limits for cash-out may apply based on your bKash account type.</p>
-                                </div>
-                            </div>
-                        )}
-
                         {['nagad', 'rocket', 'upay', 'tap'].includes(paymentMethod) && (
                             <div className="w-full animate-fade-in">
                                 <div className="flex items-center gap-4 mb-4">
@@ -413,7 +369,7 @@ const PayoutsView: React.FC = () => {
              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in" onClick={() => setReceiptTransaction(null)}>
                 <div className="w-full max-w-sm relative" onClick={e => e.stopPropagation()}>
                     <div id="receipt-content" className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl text-orbit-900">
-                        <div className="h-4 bg-[#e2136e]"></div>
+                        <div className="h-4 bg-orbit-500"></div>
                         <div className="p-8 space-y-8">
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import AIChatbot from './AIChatbot';
-import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu } from 'lucide-react';
+import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock } from 'lucide-react';
 
 interface HomePageProps {
   onLoginClick: () => void;
@@ -81,6 +81,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           
           <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-300">
             <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white transition-colors cursor-pointer">Features</a>
+            <a href="#advanced-features" onClick={(e) => scrollToSection(e, 'advanced-features')} className="hover:text-white transition-colors cursor-pointer">Advanced</a>
             <a href="#tools" onClick={(e) => scrollToSection(e, 'tools')} className="hover:text-white transition-colors cursor-pointer">Tools</a>
             <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition-colors cursor-pointer">Pricing</a>
             <a href="#support" onClick={(e) => scrollToSection(e, 'support')} className="hover:text-white transition-colors cursor-pointer">Support</a>
@@ -232,6 +233,28 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
               color="text-cyan-400" 
               gradient="from-cyan-500/20 to-blue-500/5" 
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Advanced Features */}
+      <section id="advanced-features" className="py-24 relative z-10 bg-orbit-900">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Advanced Platform Features</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">We've added powerful tools to help you manage your network more effectively.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <FeatureCard icon={UserCheck} title="Automated Onboarding" desc="Guided, multi-step process for new creators to sign contracts and link channels." color="text-indigo-400" gradient="from-indigo-500/20 to-blue-500/5" />
+            <FeatureCard icon={Calendar} title="Content Calendar" desc="Shared calendar for scheduling video releases and managing content strategies." color="text-purple-400" gradient="from-purple-500/20 to-indigo-500/5" />
+            <FeatureCard icon={Trophy} title="Leaderboards" desc="Gamification system to encourage healthy competition among creators." color="text-yellow-400" gradient="from-yellow-500/20 to-orange-500/5" />
+            <FeatureCard icon={BellRing} title="Automated Notifications" desc="Robust system for alerts on payments, brand deals, and claim resolutions." color="text-red-400" gradient="from-red-500/20 to-orange-500/5" />
+            <FeatureCard icon={PieChart} title="Financial Analytics" desc="Deep breakdown of revenue sources and tax estimation tools." color="text-green-400" gradient="from-green-500/20 to-emerald-500/5" />
+            <FeatureCard icon={UserSearch} title="Recruitment CRM" desc="Dedicated pipeline to track potential creator leads." color="text-blue-400" gradient="from-blue-500/20 to-cyan-500/5" />
+            <FeatureCard icon={Globe} title="Multi-Platform Analytics" desc="Unified view of performance across YouTube, TikTok, and Instagram." color="text-cyan-400" gradient="from-cyan-500/20 to-blue-500/5" />
+            <FeatureCard icon={MessageSquare} title="Admin-Creator Chat" desc="Secure, in-app messaging for faster communication." color="text-orange-400" gradient="from-orange-500/20 to-red-500/5" />
+            <FeatureCard icon={Lock} title="Access Control" desc="Granular permissions for MCN staff roles." color="text-pink-400" gradient="from-pink-500/20 to-rose-500/5" />
           </div>
         </div>
       </section>

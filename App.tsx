@@ -9,6 +9,7 @@ import AIStrategist from './components/AIStrategist';
 import IntegrationsView from './components/IntegrationsView';
 import SupportView from './components/SupportView';
 import OnboardingModal from './components/OnboardingModal';
+import PlaceholderView from './components/PlaceholderView';
 import PayoutsView from './components/PayoutsView';
 import SystemLogsView from './components/SystemLogsView';
 import AdminView from './components/AdminView';
@@ -187,6 +188,36 @@ const App: React.FC = () => {
         return <SystemLogsView />;
       case TabView.ADMIN_PANEL:
         return <AdminView />;
+      case TabView.REPORTS:
+        return <PlaceholderView title="Performance Reports" />;
+      case TabView.MARKETPLACE:
+        return <PlaceholderView title="Marketplace" />;
+      case TabView.RESOURCES:
+        return <PlaceholderView title="Resources" />;
+      case TabView.CONTENT_ID:
+        return <PlaceholderView title="Content ID Claims" />;
+      case TabView.RECRUITMENT:
+        return <PlaceholderView title="Recruitment" />;
+      case TabView.AI_TOOLS:
+        return <PlaceholderView title="AI Tools" />;
+      case TabView.ONBOARDING:
+        return <PlaceholderView title="Onboarding Workflow" />;
+      case TabView.CALENDAR:
+        return <PlaceholderView title="Content Calendar & Planner" />;
+      case TabView.LEADERBOARD:
+        return <PlaceholderView title="Leaderboard" />;
+      case TabView.NOTIFICATIONS:
+        return <PlaceholderView title="Notifications" />;
+      case TabView.ADVANCED_FINANCIALS:
+        return <PlaceholderView title="Advanced Financial Analytics" />;
+      case TabView.CRM:
+        return <PlaceholderView title="Recruitment CRM" />;
+      case TabView.MULTI_PLATFORM:
+        return <PlaceholderView title="Multi-Platform Analytics" />;
+      case TabView.CHAT:
+        return <PlaceholderView title="Admin-Creator Chat" />;
+      case TabView.RBAC:
+        return <PlaceholderView title="Role-Based Access Control" />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-gray-500">
@@ -245,7 +276,7 @@ const App: React.FC = () => {
                 <Menu size={20} />
               </button>
                <h2 className="text-xl sm:text-2xl font-bold text-white capitalize tracking-tight drop-shadow-sm truncate max-w-[150px] sm:max-w-none">
-                {currentTab.toLowerCase().replace('_', ' ')}
+                {currentTab?.toLowerCase().replace('_', ' ') || 'Dashboard'}
               </h2>
             </div>
             

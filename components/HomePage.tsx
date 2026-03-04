@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import AIChatbot from './AIChatbot';
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu } from 'lucide-react';
 
 interface HomePageProps {
@@ -81,6 +82,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-300">
             <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white transition-colors cursor-pointer">Features</a>
             <a href="#tools" onClick={(e) => scrollToSection(e, 'tools')} className="hover:text-white transition-colors cursor-pointer">Tools</a>
+            <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition-colors cursor-pointer">Pricing</a>
             <a href="#support" onClick={(e) => scrollToSection(e, 'support')} className="hover:text-white transition-colors cursor-pointer">Support</a>
           </div>
 
@@ -91,14 +93,16 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
             >
               Log In
             </button>
-            <button 
-              onClick={onLoginClick}
+            <a 
+              href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment"
+              target="_blank"
+              rel="noreferrer"
               className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all transform hover:scale-105 shadow-lg shadow-white/10 flex items-center gap-2"
             >
               <span className="hidden xs:block">Apply Now</span>
               <span className="xs:hidden">Apply</span>
               <ArrowRight size={16} />
-            </button>
+            </a>
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2 text-gray-400 hover:text-white bg-white/5 rounded-lg border border-white/5"
@@ -114,9 +118,10 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
             <div className="flex flex-col space-y-6">
               <a href="#features" onClick={(e) => { scrollToSection(e, 'features'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Features</a>
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
+              <a href="#pricing" onClick={(e) => { scrollToSection(e, 'pricing'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Pricing</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
               <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="text-left text-lg font-medium text-indigo-400">Log In</button>
-              <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center">Apply Now</button>
+              <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center">Apply Now</a>
             </div>
           </div>
         )}
@@ -143,13 +148,13 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
-            <button onClick={onLoginClick} className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl font-bold text-lg text-white shadow-xl shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
+            <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl font-bold text-lg text-white shadow-xl shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
               Apply Now
-            </button>
-            <button className="w-full sm:w-auto px-8 py-4 bg-orbit-800 hover:bg-orbit-700 border border-orbit-700 rounded-2xl font-bold text-lg text-white transition-all flex items-center justify-center gap-2 group">
-              <Play size={20} className="fill-white group-hover:scale-110 transition-transform" />
-              <span>Learn How It Works</span>
-            </button>
+            </a>
+            <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="w-full sm:w-auto px-8 py-4 bg-orbit-800 hover:bg-orbit-700 border border-orbit-700 rounded-2xl font-bold text-lg text-white transition-all flex items-center justify-center gap-2 group">
+              <DollarSign size={20} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span>Service Charges</span>
+            </a>
           </div>
 
           <div className="mt-20 relative mx-auto max-w-5xl animate-fade-in-up" style={{animationDelay: '0.5s'}}>
@@ -263,6 +268,88 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 relative z-10 bg-orbit-900">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-400 mb-6 uppercase tracking-wider">Service Charge Pricing</div>
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">Transparent Revenue Share</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">No hidden fees. No upfront costs. We only win when you win. Our service charge is based on a simple revenue split model.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Starter Plan */}
+            <div className="p-8 rounded-3xl bg-orbit-800/40 border border-orbit-700 hover:border-indigo-500/50 transition-all group relative flex flex-col h-full">
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-white mb-2">Starter</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-white">20%</span>
+                  <span className="text-gray-400 text-sm">Service Charge</span>
+                </div>
+                <p className="mt-4 text-gray-400 text-sm">Perfect for rising creators looking for professional protection.</p>
+              </div>
+              <div className="space-y-4 mb-10 flex-1">
+                <PricingFeature text="80/20 Revenue Split" />
+                <PricingFeature text="Content ID Protection" />
+                <PricingFeature text="Monthly Payouts" />
+                <PricingFeature text="Standard SEO Tools" />
+                <PricingFeature text="Community Support" />
+              </div>
+              <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full py-4 bg-orbit-700 hover:bg-orbit-600 border border-orbit-600 rounded-2xl font-bold text-white transition-all text-center">
+                Apply Now
+              </a>
+            </div>
+
+            {/* Growth Plan */}
+            <div className="p-8 rounded-3xl bg-gradient-to-b from-indigo-500/10 to-transparent border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 relative flex flex-col h-full transform md:-translate-y-4">
+              <div className="absolute top-0 right-8 -translate-y-1/2 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">Most Popular</div>
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-white mb-2 text-indigo-400">Growth</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-white">10%</span>
+                  <span className="text-gray-400 text-sm">Service Charge</span>
+                </div>
+                <p className="mt-4 text-gray-400 text-sm">For established creators ready to scale their brand globally.</p>
+              </div>
+              <div className="space-y-4 mb-10 flex-1">
+                <PricingFeature text="90/10 Revenue Split" />
+                <PricingFeature text="Priority Content ID" />
+                <PricingFeature text="Weekly Payouts" />
+                <PricingFeature text="Dedicated Account Manager" />
+                <PricingFeature text="Brand Deal Access" />
+                <PricingFeature text="Advanced Analytics" />
+              </div>
+              <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold text-white shadow-xl shadow-indigo-500/20 transition-all text-center">
+                Apply Now
+              </a>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="p-8 rounded-3xl bg-orbit-800/40 border border-orbit-700 hover:border-purple-500/50 transition-all group flex flex-col h-full">
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-white mb-2">Enterprise</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-white">5%</span>
+                  <span className="text-gray-400 text-sm">Service Charge</span>
+                </div>
+                <p className="mt-4 text-gray-400 text-sm">Custom solutions for media houses and top-tier talent.</p>
+              </div>
+              <div className="space-y-4 mb-10 flex-1">
+                <PricingFeature text="95/5 Revenue Split" />
+                <PricingFeature text="White-Glove Support" />
+                <PricingFeature text="Instant Payouts" />
+                <PricingFeature text="Custom Funding & Loans" />
+                <PricingFeature text="Full Legal Protection" />
+                <PricingFeature text="Multi-Channel CMS" />
+              </div>
+              <button onClick={onLoginClick} className="w-full py-4 bg-orbit-700 hover:bg-orbit-600 border border-orbit-600 rounded-2xl font-bold text-white transition-all">
+                Contact Sales
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Support & FAQ Section */}
       <section id="support" className="py-24 relative z-10 bg-orbit-800/20">
         <div className="max-w-7xl mx-auto px-6">
@@ -329,6 +416,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
           <div className="text-sm text-gray-500">© 2026 OrbitX MCN Network. All rights reserved.</div>
         </div>
       </footer>
+      <AIChatbot />
     </div>
   );
 };
@@ -352,6 +440,15 @@ const ToolItem = ({ icon: Icon, title, desc }: { icon: any, title: string, desc:
             <h4 className="text-white font-bold mb-1">{title}</h4>
             <p className="text-gray-400 text-sm">{desc}</p>
         </div>
+    </div>
+);
+
+const PricingFeature = ({ text }: { text: string }) => (
+    <div className="flex items-center gap-3">
+        <div className="shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center">
+            <Check size={12} className="text-indigo-400" />
+        </div>
+        <span className="text-gray-300 text-sm">{text}</span>
     </div>
 );
 

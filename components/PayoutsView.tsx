@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Wallet, ArrowUpRight, Clock, CheckCircle2, AlertCircle, Banknote, Calendar, Building2, Check, User, Save, X, Edit2, ShieldAlert, Timer, Receipt, Rocket, Printer, Download, Loader2 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface Transaction {
   id: string;

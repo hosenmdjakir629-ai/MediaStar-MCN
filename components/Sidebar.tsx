@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, BarChart3, BrainCircuit, Settings, LogOut, Rocket, Wallet, Blocks, Headphones, X, Terminal, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, BrainCircuit, Settings, LogOut, Rocket, Wallet, Blocks, Headphones, X, Terminal, ShieldCheck, FileText, Share2, FolderOpen, AlertTriangle, UserPlus, Sparkles, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Globe, MessageSquare, Lock } from 'lucide-react';
 import { TabView } from '../types';
 
 interface SidebarProps {
@@ -14,13 +14,28 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
     { id: TabView.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
     { id: TabView.CREATORS, label: 'Creators', icon: Users },
     { id: TabView.ANALYTICS, label: 'Analytics', icon: BarChart3 },
+    { id: TabView.REPORTS, label: 'Performance Reports', icon: FileText },
+    { id: TabView.MARKETPLACE, label: 'Marketplace', icon: Share2 },
+    { id: TabView.RESOURCES, label: 'Resources', icon: FolderOpen },
+    { id: TabView.CONTENT_ID, label: 'Content ID Claims', icon: AlertTriangle },
+    { id: TabView.RECRUITMENT, label: 'Recruitment', icon: UserPlus },
     { id: TabView.PAYOUTS, label: 'Payouts', icon: Wallet },
-    { id: TabView.AI_STRATEGIST, label: 'OrbitX MCN AI Strategy', icon: BrainCircuit },
+    { id: TabView.AI_STRATEGIST, label: 'AI Strategy', icon: BrainCircuit },
+    { id: TabView.AI_TOOLS, label: 'AI Tools', icon: Sparkles },
     { id: TabView.INTEGRATIONS, label: 'Integrations', icon: Blocks },
     { id: TabView.SUPPORT, label: 'Support Center', icon: Headphones },
     { id: TabView.SYSTEM_LOGS, label: 'System Logs', icon: Terminal },
     { id: TabView.ADMIN_PANEL, label: 'Admin Panel', icon: ShieldCheck },
     { id: TabView.SETTINGS, label: 'Settings', icon: Settings },
+    { id: TabView.ONBOARDING, label: 'Onboarding', icon: UserCheck },
+    { id: TabView.CALENDAR, label: 'Content Calendar', icon: Calendar },
+    { id: TabView.LEADERBOARD, label: 'Leaderboard', icon: Trophy },
+    { id: TabView.NOTIFICATIONS, label: 'Notifications', icon: BellRing },
+    { id: TabView.ADVANCED_FINANCIALS, label: 'Financial Analytics', icon: PieChart },
+    { id: TabView.CRM, label: 'Recruitment CRM', icon: UserSearch },
+    { id: TabView.MULTI_PLATFORM, label: 'Multi-Platform', icon: Globe },
+    { id: TabView.CHAT, label: 'Admin-Creator Chat', icon: MessageSquare },
+    { id: TabView.RBAC, label: 'Access Control', icon: Lock },
   ];
 
   const handleLogoutClick = () => {
@@ -55,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
           const isActive = currentTab === item.id;
           return (
             <button
-              key={item.id}
+              key={item.label}
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                 isActive

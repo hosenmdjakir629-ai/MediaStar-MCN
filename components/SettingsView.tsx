@@ -15,6 +15,29 @@ const SettingsView: React.FC = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', role: 'Content Manager' });
 
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [responseTime, setResponseTime] = useState<number | null>(null);
+
+  const checkServerHealth = async () => {
+    setServerStatus('checking');
+    const start = Date.now();
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) {
+        setServerStatus('online');
+        setResponseTime(Date.now() - start);
+      } else {
+        setServerStatus('offline');
+      }
+    } catch (error) {
+      setServerStatus('offline');
+    }
+  };
+
+  React.useEffect(() => {
+    checkServerHealth();
+  }, []);
+
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -63,13 +86,13 @@ const SettingsView: React.FC = () => {
             <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase font-bold mb-1">API Status</p>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                    <span className="text-lg font-bold text-white">Operational</span>
+                    <div className={`w-2 h-2 rounded-full ${serverStatus === 'online' ? 'bg-emerald-500' : serverStatus === 'offline' ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'}`}></div>
+                    <span className="text-lg font-bold text-white capitalize">{serverStatus}</span>
                 </div>
             </div>
             <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase font-bold mb-1">Response Time</p>
-                <span className="text-lg font-bold text-white">24ms</span>
+                <span className="text-lg font-bold text-white">{responseTime !== null ? `${responseTime}ms` : '--'}</span>
             </div>
             <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase font-bold mb-1">Uptime</p>
@@ -83,10 +106,12 @@ const SettingsView: React.FC = () => {
                 </div>
                 <div>
                     <p className="text-sm font-bold text-white">Primary Endpoint</p>
-                    <p className="text-xs text-gray-500">https://api.orbitx.mcn/v1</p>
+                    <p className="text-xs text-gray-500">/api/health</p>
                 </div>
             </div>
-            <button className="text-xs font-bold text-orbit-500 hover:text-orbit-400 transition-colors">Test Connection</button>
+            <button onClick={checkServerHealth} className="text-xs font-bold text-orbit-500 hover:text-orbit-400 transition-colors disabled:opacity-50" disabled={serverStatus === 'checking'}>
+                {serverStatus === 'checking' ? 'Testing...' : 'Test Connection'}
+            </button>
         </div>
       </div>
 

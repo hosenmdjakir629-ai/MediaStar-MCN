@@ -17,11 +17,13 @@ import LoginView from './components/LoginView';
 import HomePage from './components/HomePage';
 import { TabView, AnalyticsData, Creator } from './types';
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
+import { auth, db, logOut } from './src/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('orbitx_token');
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [currentTab, setCurrentTab] = useState<TabView>(TabView.DASHBOARD);
   
@@ -30,29 +32,63 @@ const App: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [creatorsRes, analyticsRes] = await Promise.all([
-          fetch('/api/creators'),
-          fetch('/api/analytics')
-        ]);
-        
-        if (creatorsRes.ok && analyticsRes.ok) {
-          const [creatorsData, analyticsData] = await Promise.all([
-            creatorsRes.json(),
-            analyticsRes.json()
-          ]);
-          setCreators(creatorsData);
-          setAnalytics(analyticsData);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await getDoc(userRef);
+          
+          if (!userSnap.exists()) {
+            // Create user document if it doesn't exist
+            const userData: any = {
+              uid: user.uid,
+              email: user.email,
+              role: user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'viewer'
+            };
+            if (user.displayName) userData.name = user.displayName;
+            if (user.photoURL) userData.photoURL = user.photoURL;
+            
+            await setDoc(userRef, userData);
+          }
+        } catch (error) {
+          console.error("Error checking/creating user document:", error);
         }
-      } catch (error) {
-        console.error("Error fetching data from API", error);
-      } finally {
-        setIsLoadingData(false);
       }
-    };
-    fetchData();
+      setIsAuthenticated(!!user);
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthReady || !isAuthenticated) {
+      setIsLoadingData(false);
+      return;
+    }
+
+    setIsLoadingData(true);
+
+    const unsubscribeCreators = onSnapshot(collection(db, 'creators'), (snapshot) => {
+      const creatorsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Creator));
+      setCreators(creatorsData);
+      setIsLoadingData(false);
+    }, (error) => {
+      console.error("Error fetching creators:", error);
+      setIsLoadingData(false);
+    });
+
+    const unsubscribeAnalytics = onSnapshot(collection(db, 'analytics'), (snapshot) => {
+      const analyticsData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as AnalyticsData));
+      setAnalytics(analyticsData);
+    }, (error) => {
+      console.error("Error fetching analytics:", error);
+    });
+
+    return () => {
+      unsubscribeCreators();
+      unsubscribeAnalytics();
+    };
+  }, [isAuthReady, isAuthenticated]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -82,15 +118,18 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const handleLogin = (status: boolean) => {
-      setIsAuthenticated(status);
+      // Auth state is handled by onAuthStateChanged
       setShowLogin(false);
   };
 
-  const handleLogout = () => {
-      localStorage.removeItem('orbitx_token');
-      setIsAuthenticated(false);
-      setShowOnboarding(false);
-      setCurrentTab(TabView.DASHBOARD);
+  const handleLogout = async () => {
+      try {
+        await logOut();
+        setShowOnboarding(false);
+        setCurrentTab(TabView.DASHBOARD);
+      } catch (error) {
+        console.error("Logout failed", error);
+      }
   };
 
   const handleCompleteOnboarding = () => {
@@ -99,6 +138,8 @@ const App: React.FC = () => {
   };
 
   const handleAddCreator = async (data?: Partial<Creator>) => {
+    if (!auth.currentUser) return;
+    
     const newCreatorData = {
       name: data?.name || 'New Creator',
       channelName: data?.channelName || 'New Channel',
@@ -110,51 +151,84 @@ const App: React.FC = () => {
       avatarUrl: data?.avatarUrl || `https://picsum.photos/100?random=${Date.now()}`,
       status: 'Pending',
       trend: 'flat',
-      linkedChannelHandle: data?.linkedChannelHandle
+      linkedChannelHandle: data?.linkedChannelHandle || '',
+      createdAt: new Date().toISOString(),
+      createdBy: auth.currentUser.uid
     };
 
     try {
-      const response = await fetch('/api/creators', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCreatorData),
+      await addDoc(collection(db, 'creators'), newCreatorData);
+      await addDoc(collection(db, 'logs'), {
+        timestamp: new Date().toISOString(),
+        action: 'CREATOR_ADDED',
+        details: `Added creator: ${newCreatorData.name} (${newCreatorData.channelName})`,
+        user: auth.currentUser.displayName || 'Admin',
+        userId: auth.currentUser.uid
       });
-      if (response.ok) {
-        const savedCreator = await response.json();
-        setCreators([savedCreator, ...creators]);
-      }
     } catch (error) {
-      console.error("Error adding creator to API", error);
+      console.error("Error adding creator to Firestore", error);
     }
   };
 
   const handleDeleteCreator = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this creator?')) {
       try {
-        const response = await fetch(`/api/creators/${id}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          setCreators(creators.filter(c => c.id !== id));
+        const creatorToDelete = creators.find(c => c.id === id);
+        await deleteDoc(doc(db, 'creators', id));
+        if (creatorToDelete && auth.currentUser) {
+          await addDoc(collection(db, 'logs'), {
+            timestamp: new Date().toISOString(),
+            action: 'CREATOR_DELETED',
+            details: `Deleted creator: ${creatorToDelete.name}`,
+            user: auth.currentUser.displayName || 'Admin',
+            userId: auth.currentUser.uid
+          });
         }
       } catch (error) {
-        console.error("Error deleting creator from API", error);
+        console.error("Error deleting creator from Firestore", error);
       }
     }
   };
 
   const handleUpdateCreator = async (updatedCreator: Creator) => {
     try {
-      const response = await fetch(`/api/creators/${updatedCreator.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedCreator),
-      });
-      if (response.ok) {
-        setCreators(creators.map(c => c.id === updatedCreator.id ? updatedCreator : c));
+      const { id, ...dataToUpdate } = updatedCreator;
+      await updateDoc(doc(db, 'creators', id), dataToUpdate as any);
+      if (auth.currentUser) {
+        await addDoc(collection(db, 'logs'), {
+          timestamp: new Date().toISOString(),
+          action: 'CREATOR_UPDATED',
+          details: `Updated creator: ${updatedCreator.name}`,
+          user: auth.currentUser.displayName || 'Admin',
+          userId: auth.currentUser.uid
+        });
       }
     } catch (error) {
-      console.error("Error updating creator in API", error);
+      console.error("Error updating creator in Firestore", error);
+      if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
+        const errInfo = {
+          error: error.message,
+          operationType: 'update',
+          path: `creators/${updatedCreator.id}`,
+          authInfo: {
+            userId: auth.currentUser?.uid,
+            email: auth.currentUser?.email,
+            emailVerified: auth.currentUser?.emailVerified,
+            isAnonymous: auth.currentUser?.isAnonymous,
+            tenantId: auth.currentUser?.tenantId,
+            providerInfo: auth.currentUser?.providerData.map(provider => ({
+              providerId: provider.providerId,
+              displayName: provider.displayName,
+              email: provider.email,
+              photoUrl: provider.photoURL
+            })) || []
+          }
+        };
+        console.error('Firestore Error: ', JSON.stringify(errInfo));
+        alert('You do not have permission to update this creator. Please contact an administrator.');
+      } else {
+        alert('An error occurred while updating the creator. Please try again.');
+      }
     }
   };
 
@@ -226,6 +300,14 @@ const App: React.FC = () => {
         );
     }
   };
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-orbit-900 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
       if (showLogin) {
@@ -299,12 +381,12 @@ const App: React.FC = () => {
               
               <div className="flex items-center space-x-3 pl-6 border-l border-white/10">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-white">Network Admin</p>
+                  <p className="text-sm font-medium text-white">{auth.currentUser?.displayName || 'Network Admin'}</p>
                   <p className="text-xs text-gray-500">MediaStar MCN HQ</p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-cyan-500 p-[2px] relative group cursor-pointer shadow-lg shadow-indigo-500/20">
                    <div className="w-full h-full bg-orbit-900 rounded-full overflow-hidden">
-                      <img src="https://i.pravatar.cc/150?u=admin" alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                      <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                    </div>
                    <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center rounded-full backdrop-blur-[1px]" onClick={handleLogout}>
                          <LogOut size={16} className="text-white" />

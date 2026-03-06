@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Terminal, Clock, User, Activity, Search, RefreshCw, Shield } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { db } from '../src/firebase';
 
 interface Log {
   id: string;
@@ -7,6 +9,7 @@ interface Log {
   action: string;
   details: string;
   user: string;
+  userId: string;
 }
 
 const SystemLogsView: React.FC = () => {
@@ -14,23 +17,23 @@ const SystemLogsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchLogs = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/logs');
-      if (response.ok) {
-        const data = await response.json();
-        setLogs(data);
-      }
-    } catch (error) {
-      console.error("Error fetching logs:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchLogs();
+    setIsLoading(true);
+    const q = query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(100));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const logsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Log));
+      setLogs(logsData);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching logs:", error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const filteredLogs = logs.filter(log => 
@@ -58,13 +61,6 @@ const SystemLogsView: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <button 
-            onClick={fetchLogs}
-            className="p-2 text-gray-400 hover:text-white bg-white/5 rounded-lg border border-white/10 transition-all"
-            title="Refresh logs"
-          >
-            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-          </button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
             <input 

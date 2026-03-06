@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the CMS, typically an admin.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "role": { "type": "string", "enum": ["admin", "editor", "viewer"], "description": "The user's role." },
+        "name": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "The user's profile picture URL." }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Creator": {
+      "title": "Creator",
+      "description": "A creator managed by the MCN.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Creator's full name." },
+        "channelName": { "type": "string", "description": "YouTube channel name." },
+        "subscribers": { "type": "number", "description": "Subscriber count." },
+        "totalViews": { "type": "number", "description": "Total views." },
+        "videoCount": { "type": "number", "description": "Total number of videos." },
+        "revenue": { "type": "number", "description": "Monthly revenue." },
+        "niche": { "type": "string", "description": "Content niche." },
+        "avatarUrl": { "type": "string", "format": "uri", "description": "Avatar image URL." },
+        "status": { "type": "string", "enum": ["Active", "Pending", "Suspended"], "description": "Creator status." },
+        "trend": { "type": "string", "enum": ["up", "down", "flat"], "description": "Performance trend." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "createdBy": { "type": "string", "description": "UID of the user who added this creator." }
+      },
+      "required": ["name", "channelName", "subscribers", "totalViews", "videoCount", "revenue", "niche", "status", "trend"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "System activity log.",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time of the event." },
+        "action": { "type": "string", "description": "The action performed." },
+        "details": { "type": "string", "description": "Details of the action." },
+        "user": { "type": "string", "description": "The user who performed the action." },
+        "userId": { "type": "string", "description": "The UID of the user who performed the action." }
+      },
+      "required": ["timestamp", "action", "details", "user", "userId"]
+    },
+    "Analytics": {
+      "title": "Analytics",
+      "description": "Daily analytics data.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date string (e.g., 'Oct 12')." },
+        "views": { "type": "number", "description": "Daily views." },
+        "revenue": { "type": "number", "description": "Daily revenue." },
+        "subs": { "type": "number", "description": "Daily new subscribers." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "ISO timestamp for sorting." }
+      },
+      "required": ["date", "views", "revenue", "subs", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles and roles."
+    },
+    "/creators/{creatorId}": {
+      "schema": { "$ref": "#/entities/Creator" },
+      "description": "Stores managed creators."
+    },
+    "/logs/{logId}": {
+      "schema": { "$ref": "#/entities/Log" },
+      "description": "Stores system activity logs."
+    },
+    "/analytics/{analyticsId}": {
+      "schema": { "$ref": "#/entities/Analytics" },
+      "description": "Stores daily analytics data."
+    }
+  }
+}

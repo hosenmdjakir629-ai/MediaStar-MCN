@@ -31,21 +31,21 @@ const CreatorDashboardView: React.FC = () => {
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       {/* Header & Status */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">Creator Portal</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Creator Portal</h2>
           <p className="text-gray-400 text-sm mt-1">Welcome back! Here's your channel performance summary.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <CheckCircle size={16} className="text-emerald-500" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <CheckCircle size={20} className="text-emerald-500 shrink-0" />
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">MCN Status</span>
               <span className="text-sm font-bold text-white">Active Member</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-orbit-800 border border-orbit-700 rounded-xl">
-            <Calendar size={16} className="text-orbit-400" />
+          <div className="flex items-center gap-2 px-4 py-3 bg-orbit-800 border border-orbit-700 rounded-xl">
+            <Calendar size={20} className="text-orbit-400 shrink-0" />
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Next Payout</span>
               <span className="text-sm font-bold text-white">Aug 21, 2026</span>

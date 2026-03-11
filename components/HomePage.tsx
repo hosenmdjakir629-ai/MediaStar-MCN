@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import AIChatbot from './AIChatbot';
 import CreatorSubmitForm from './CreatorSubmitForm';
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock } from 'lucide-react';
 
@@ -330,7 +329,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
           <div className="text-sm text-gray-500">© 2026 OrbitX MCN Network. All rights reserved.</div>
         </div>
       </footer>
-      <AIChatbot />
     </div>
   );
 };

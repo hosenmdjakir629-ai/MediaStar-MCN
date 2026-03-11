@@ -46,9 +46,9 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
     const response = await fetch(`/api/youtube/channel/${encodeURIComponent(cleanHandle)}`);
 
     if (!response.ok) {
-      if (response.status === 500) {
-        // Likely API key missing on server, use mock
-        console.warn("OrbitX MCN: Backend API error (likely missing key). Falling back to mock.");
+      if (response.status === 500 || response.status === 504) {
+        // 500: Missing key, 504: Timeout/Abort on server
+        console.warn(`OrbitX MCN: Backend API ${response.status}. Falling back to mock.`);
         return getMockData();
       }
       throw new Error(`Backend API error: ${response.statusText}`);

@@ -126,7 +126,7 @@ router.get('/youtube/channel/:handle', async (req, res) => {
   } catch (error: any) {
     if (error.name === 'AbortError' || error.message?.includes('aborted')) {
       console.warn('YouTube Proxy: Fetch aborted or timed out');
-      return res.status(504).json({ error: 'Request to YouTube API was aborted or timed out' });
+      return res.status(504).json({ error: 'Upstream request timed out' });
     }
     console.error('YouTube Proxy Error:', error);
     res.status(500).json({ error: 'Internal server error while fetching YouTube data' });

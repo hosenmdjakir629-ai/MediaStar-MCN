@@ -83,16 +83,18 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             >
               Log In
             </button>
-            <a 
+            <motion.a 
+              whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.9)" }}
+              whileTap={{ scale: 0.95 }}
               href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment"
               target="_blank"
               rel="noreferrer"
-              className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all transform hover:scale-105 shadow-lg shadow-white/10 flex items-center gap-2"
+              className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all shadow-lg shadow-white/10 flex items-center gap-2"
             >
               <span className="hidden xs:block">Apply Now</span>
               <span className="xs:hidden">Apply</span>
               <ArrowRight size={16} />
-            </a>
+            </motion.a>
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2 text-gray-400 hover:text-white bg-white/5 rounded-lg border border-white/5"
@@ -110,7 +112,16 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
               <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="text-left text-lg font-medium text-indigo-400">Log In</button>
-              <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center">Apply Now</a>
+              <motion.a 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" 
+                target="_blank" 
+                rel="noreferrer" 
+                className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center"
+              >
+                Apply Now
+              </motion.a>
             </div>
           </div>
         )}
@@ -157,9 +168,30 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl font-bold text-lg text-white shadow-xl shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
-              Apply Now
-            </a>
+            <motion.a 
+              whileHover={{ 
+                scale: 1.05, 
+                y: -4,
+                boxShadow: "0px 10px 25px rgba(99, 102, 241, 0.4)"
+              }}
+              whileTap={{ scale: 0.98 }}
+              animate={{ 
+                boxShadow: ["0px 0px 0px rgba(99, 102, 241, 0)", "0px 0px 20px rgba(99, 102, 241, 0.4)", "0px 0px 0px rgba(99, 102, 241, 0)"] 
+              }}
+              transition={{ 
+                boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                type: "spring",
+                stiffness: 400,
+                damping: 10
+              }}
+              href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 group"
+            >
+              <span>Apply Now</span>
+              <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+            </motion.a>
           </motion.div>
 
           <motion.div 
@@ -334,7 +366,16 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                             <div className="text-xl font-bold text-white font-mono">01927694437</div>
                             <div className="text-xs text-gray-400">WhatsApp Support Available</div>
                         </div>
-                         <a href="https://wa.me/8801927694437" target="_blank" rel="noreferrer" className="ml-auto px-4 py-2 bg-green-500 hover:bg-green-400 text-white text-xs font-bold rounded-lg transition-colors">Chat</a>
+                          <motion.a 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            href="https://wa.me/8801927694437" 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="ml-auto px-4 py-2 bg-green-500 hover:bg-green-400 text-white text-xs font-bold rounded-lg transition-colors"
+                          >
+                            Chat
+                          </motion.a>
                     </div>
                     <CreatorSubmitForm />
                 </div>

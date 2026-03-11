@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Send, CheckCircle } from 'lucide-react';
 import { db } from '../src/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { motion } from 'motion/react';
 
 const CreatorSubmitForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -106,11 +107,17 @@ const CreatorSubmitForm: React.FC = () => {
           </select>
         </div>
         <textarea name="additional_info" value={formData.additional_info} onChange={handleChange} placeholder="Additional Info" className="w-full h-32 bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors resize-none" />
-        <button type="submit" disabled={formStatus === 'sending' || formStatus === 'success'} className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 ${formStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="submit" 
+          disabled={formStatus === 'sending' || formStatus === 'success'} 
+          className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${formStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+        >
           {formStatus === 'idle' && <><span>Submit Application</span><Send size={18} /></>}
           {formStatus === 'sending' && <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span><span>Submitting...</span></>}
           {formStatus === 'success' && <><CheckCircle size={18} /><span>Application Submitted!</span></>}
-        </button>
+        </motion.button>
       </form>
     </div>
   );

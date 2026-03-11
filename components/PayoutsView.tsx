@@ -1,41 +1,41 @@
 import React, { useState } from 'react';
-import { Wallet, ArrowUpRight, Clock, CheckCircle2, AlertCircle, Banknote, Calendar, Building2, Check, User, Save, X, Edit2, ShieldAlert, Timer, Receipt, Rocket, Printer, Download, Loader2 } from 'lucide-react';
+import { Wallet, ArrowUpRight, Clock, CheckCircle2, AlertCircle, Banknote, Building2, Check, Edit2, Timer, Receipt, Rocket, Printer, X, Star } from 'lucide-react';
+import { PayoutRequest } from '../types';
+import { auth } from '../src/firebase';
 
-interface Transaction {
-  id: string;
-  date: string;
-  amount: number;
-  method: string;
-  status: 'Paid' | 'Processing' | 'Rejected';
-  reference: string;
+interface PayoutsViewProps {
+  isAdmin?: boolean;
+  payouts: PayoutRequest[];
+  onAddPayout: (payout: Omit<PayoutRequest, 'id'>) => void;
+  onUpdatePayout: (id: string, updates: Partial<PayoutRequest>) => void;
+  availableBalance: number;
 }
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 'TXN-8543', date: 'Sep 21, 2023', amount: 14200, method: 'Islami Bank BD', status: 'Paid', reference: 'IBBL-2910' },
-  { id: 'TXN-8110', date: 'Aug 21, 2023', amount: 11050, method: 'Nagad (Personal)', status: 'Paid', reference: 'NGD-9921' },
-];
-
-const PayoutsView: React.FC = () => {
+const PayoutsView: React.FC<PayoutsViewProps> = ({ 
+  isAdmin = false, 
+  payouts, 
+  onAddPayout, 
+  onUpdatePayout,
+  availableBalance
+}) => {
   const [amount, setAmount] = useState<string>('');
-  const [availableBalance, setAvailableBalance] = useState(154200);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   
-  // Edit Transaction State
-  const [receiptTransaction, setReceiptTransaction] = useState<Transaction | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [receiptTransaction, setReceiptTransaction] = useState<PayoutRequest | null>(null);
+  const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   
-  // Withdrawal Limits State
-  const [dailyLimit] = useState(50000);
-  const [dailyUsed] = useState(12500);
-
-  // Payment Configuration State
   const [paymentMethod, setPaymentMethod] = useState('nagad');
+  const [preferredMethod, setPreferredMethod] = useState('nagad');
+  const [withdrawalMethod, setWithdrawalMethod] = useState('nagad');
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
   const [mfsDetails, setMfsDetails] = useState<{ [key: string]: string }>({
     nagad: '01812345678',
-    rocket: '',
+    rocket: '01711223344',
     upay: '',
     tap: ''
   });
@@ -44,11 +44,7 @@ const PayoutsView: React.FC = () => {
     accountName: 'Jakir Hosen',
     accountNumber: '123.101.55421'
   });
-  const [isSaving, setIsSaving] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
-  const [isEditingConfig, setIsEditingConfig] = useState(false);
 
-  // Constants
   const banks = [
     "AB Bank Limited", "Agrani Bank Limited", "Al-Arafah Islami Bank Limited", "Bank Asia Limited",
     "BRAC Bank Limited", "City Bank Limited", "Dutch-Bangla Bank Limited (DBBL)", "Eastern Bank Limited (EBL)",
@@ -68,30 +64,31 @@ const PayoutsView: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-  const confirmWithdrawal = () => {
+  const confirmWithdrawal = async () => {
     const val = parseFloat(amount);
     setShowConfirmModal(false);
     setIsSubmitting(true);
     
-    setTimeout(() => {
-      let methodDisplay = paymentMethod === 'bank' ? 'Bank Transfer' : `${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} (Personal)`;
+    try {
+      let methodDisplay = withdrawalMethod === 'bank' ? 'Bank Transfer' : `${withdrawalMethod.charAt(0).toUpperCase() + withdrawalMethod.slice(1)} (Personal)`;
 
-      const newTxn: Transaction = {
-        id: `TXN-${Math.floor(Math.random() * 10000)}`,
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      await onAddPayout({
+        creatorId: auth.currentUser?.uid || '',
         amount: val,
         method: methodDisplay,
-        status: 'Processing',
-        reference: 'PENDING'
-      };
+        status: 'Pending',
+        timestamp: new Date().toISOString(),
+        reference: `TXN-${Math.floor(Math.random() * 10000)}`
+      });
       
-      setTransactions([newTxn, ...transactions]);
-      setAvailableBalance(prev => prev - val);
       setAmount('');
-      setIsSubmitting(false);
       setSuccessMessage("Withdrawal request submitted successfully!");
       setTimeout(() => setSuccessMessage(null), 3000);
-    }, 1500);
+    } catch (error) {
+      console.error("Error submitting withdrawal", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveConfiguration = () => {
@@ -104,13 +101,36 @@ const PayoutsView: React.FC = () => {
     }, 1000);
   };
 
-  const getCurrentNumber = () => {
-    if (paymentMethod === 'bank') {
+  const getAccountNumber = (method: string) => {
+    if (method === 'bank') {
         return bankDetails.accountNumber ? `...${bankDetails.accountNumber.slice(-4)}` : 'Not Configured';
     }
-    const num = mfsDetails[paymentMethod];
+    const num = mfsDetails[method];
     return num ? num : 'Not Configured';
   }
+
+  const isMethodConfigured = (method: string) => {
+    if (method === 'bank') return !!bankDetails.accountNumber;
+    return !!mfsDetails[method];
+  };
+
+  const handleStatusChange = (id: string, newStatus: PayoutRequest['status']) => {
+    onUpdatePayout(id, { status: newStatus, processedAt: new Date().toISOString() });
+    setEditingStatusId(null);
+  };
+
+  const getStatusStyle = (status: PayoutRequest['status']) => {
+    switch (status) {
+      case 'Paid': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'Processing': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+      case 'Rejected': return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'Pending': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+    }
+  };
+
+  const totalPaid = payouts.filter(p => p.status === 'Paid').reduce((acc, p) => acc + p.amount, 0);
+  const totalProcessing = payouts.filter(p => p.status === 'Processing' || p.status === 'Pending').reduce((acc, p) => acc + p.amount, 0);
 
   const handlePrintReceipt = () => {
     const element = document.getElementById('receipt-content');
@@ -143,7 +163,7 @@ const PayoutsView: React.FC = () => {
               </div>
               <h2 className="text-5xl font-bold mb-6">৳{availableBalance.toLocaleString()} <span className="text-xl font-normal opacity-70">BDT</span></h2>
               <div className="flex items-center justify-between pt-6 border-t border-white/20">
-                 <div className="flex flex-col text-xs uppercase opacity-70">Last Payout: <span className="text-sm font-bold opacity-100">Oct 21, 2023</span></div>
+                 <div className="flex flex-col text-xs uppercase opacity-70">Last Payout: <span className="text-sm font-bold opacity-100">{payouts.filter(p => p.status === 'Paid')[0]?.timestamp ? new Date(payouts.filter(p => p.status === 'Paid')[0].timestamp).toLocaleDateString() : 'N/A'}</span></div>
                  <div className="flex flex-col text-xs uppercase opacity-70 text-right">Next Pay: <span className="text-sm font-bold opacity-100">Nov 21, 2023</span></div>
               </div>
            </div>
@@ -155,12 +175,12 @@ const PayoutsView: React.FC = () => {
                  <span className="text-xs text-gray-500 font-medium">PENDING</span>
               </div>
               <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider">Processing</h3>
-              <p className="text-2xl font-bold text-white mt-1">৳12,400</p>
+              <p className="text-2xl font-bold text-white mt-1">৳{totalProcessing.toLocaleString()}</p>
            </div>
            <div className="bg-orbit-800 rounded-2xl p-6 border border-orbit-700">
                <div className="flex items-center justify-between mb-2"><div className="p-2 bg-green-500/10 rounded-lg text-green-500"><Banknote size={20} /></div></div>
               <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Success</h3>
-              <p className="text-2xl font-bold text-white mt-1">৳420,500</p>
+              <p className="text-2xl font-bold text-white mt-1">৳{totalPaid.toLocaleString()}</p>
            </div>
         </div>
       </div>
@@ -178,18 +198,39 @@ const PayoutsView: React.FC = () => {
                             <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-orbit-500 transition-colors font-mono text-lg" />
                         </div>
                     </div>
-                    <div className="p-4 bg-orbit-900/50 rounded-xl border border-orbit-700/50">
-                        <span className="text-xs text-gray-500 block mb-1">Target Account</span>
-                        <div className="flex items-center justify-between">
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-gray-400">Select Payout Method</label>
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                            {['nagad', 'rocket', 'upay', 'tap', 'bank'].map(method => {
+                                const configured = isMethodConfigured(method);
+                                const isSelected = withdrawalMethod === method;
+                                return (
+                                    <button 
+                                        key={method}
+                                        onClick={() => configured && setWithdrawalMethod(method)}
+                                        disabled={!configured}
+                                        className={`flex-shrink-0 p-3 rounded-xl border transition-all flex flex-col items-center gap-1 min-w-[70px] ${
+                                            isSelected ? 'bg-orbit-700 border-orbit-500 ring-1 ring-orbit-500' : 
+                                            configured ? 'bg-orbit-900 border-orbit-700 hover:border-orbit-600' : 
+                                            'bg-orbit-900/30 border-orbit-800 opacity-40 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        {getMethodIcon(method)}
+                                        <span className="text-[10px] font-bold uppercase">{method}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="p-4 bg-orbit-900/50 rounded-xl border border-orbit-700/50 flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                                {getMethodIcon(paymentMethod)}
-                                <span className="font-bold text-white text-sm capitalize">{paymentMethod === 'bank' ? 'Bank Transfer' : `${paymentMethod}`}</span>
+                                {getMethodIcon(withdrawalMethod)}
+                                <span className="font-bold text-white text-sm capitalize">{withdrawalMethod === 'bank' ? 'Bank Transfer' : `${withdrawalMethod}`}</span>
                             </div>
-                            <span className="text-xs text-gray-400 font-mono font-bold">{getCurrentNumber()}</span>
+                            <span className="text-xs text-gray-400 font-mono font-bold">{getAccountNumber(withdrawalMethod)}</span>
                         </div>
                     </div>
                 </div>
-                <button onClick={handleWithdrawClick} disabled={isSubmitting || !amount || getCurrentNumber() === 'Not Configured'} className="w-full mt-6 py-4 rounded-xl font-black text-white shadow-lg transition-all transform active:scale-95 bg-orbit-500 hover:bg-orbit-400 shadow-orbit-500/25 disabled:opacity-50">
+                <button onClick={handleWithdrawClick} disabled={isSubmitting || !amount || !isMethodConfigured(withdrawalMethod)} className="w-full mt-6 py-4 rounded-xl font-black text-white shadow-lg transition-all transform active:scale-95 bg-orbit-500 hover:bg-orbit-400 shadow-orbit-500/25 disabled:opacity-50">
                     {isSubmitting ? 'Processing...' : 'Submit Request'}
                 </button>
                 {successMessage && <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center space-x-2 text-green-400 text-sm animate-fade-in"><CheckCircle2 size={16} /><span>{successMessage}</span></div>}
@@ -225,6 +266,9 @@ const PayoutsView: React.FC = () => {
                                     className={`p-3 rounded-2xl border flex flex-col items-center justify-center space-y-3 transition-all relative overflow-hidden group h-28 ${isActive ? 'bg-orbit-700 border-orbit-500 ring-2 ring-orbit-500/50' : 'bg-orbit-900 border-orbit-700 hover:border-orbit-600'}`}
                                 >
                                     {isActive && <div className="absolute top-2 right-2 text-orbit-500 bg-white rounded-full p-0.5"><Check size={10} strokeWidth={4} /></div>}
+                                    {preferredMethod === method && <div className="absolute top-2 left-2 text-yellow-500 drop-shadow-sm"><Star size={12} fill="currentColor" /></div>}
+                                    {!isMethodConfigured(method) && <div className="absolute bottom-1 right-2 w-1.5 h-1.5 bg-gray-600 rounded-full"></div>}
+                                    {isMethodConfigured(method) && <div className="absolute bottom-1 right-2 w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div>}
                                     
                                     {method === 'nagad' && <div className="w-10 h-10 bg-[#ec1d24] rounded-xl flex items-center justify-center shadow-lg font-black text-white text-lg group-hover:scale-110 transition-transform">N</div>}
                                     {method === 'rocket' && <div className="w-10 h-10 bg-[#8c3494] rounded-xl flex items-center justify-center shadow-lg font-black text-white text-lg group-hover:scale-110 transition-transform">R</div>}
@@ -280,6 +324,20 @@ const PayoutsView: React.FC = () => {
                                 </div>
                             </div>
                         )}
+                        {isMethodConfigured(paymentMethod) && preferredMethod !== paymentMethod && (
+                            <div className="absolute bottom-4 right-6 animate-fade-in">
+                                <button 
+                                    onClick={() => {
+                                        setPreferredMethod(paymentMethod);
+                                        setWithdrawalMethod(paymentMethod);
+                                    }}
+                                    className="flex items-center gap-2 text-xs font-bold text-orbit-500 hover:text-orbit-400 transition-colors bg-orbit-900/80 px-3 py-1.5 rounded-lg border border-orbit-700"
+                                >
+                                    <Star size={14} />
+                                    Set as Preferred
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -307,23 +365,44 @@ const PayoutsView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-orbit-700">
-                        {transactions.map((txn) => (
+                        {payouts.map((txn) => (
                             <tr key={txn.id} className="hover:bg-orbit-700/30 transition-colors">
-                                <td className="p-4 font-mono text-sm text-gray-300">{txn.id}</td>
-                                <td className="p-4 text-xs text-gray-400 font-medium">{txn.date}</td>
+                                <td className="p-4 font-mono text-sm text-gray-300">{txn.reference || txn.id}</td>
+                                <td className="p-4 text-xs text-gray-400 font-medium">{new Date(txn.timestamp).toLocaleDateString()}</td>
                                 <td className="p-4 text-sm text-white font-bold flex items-center gap-3">
                                     {getMethodIcon(txn.method)}
                                     {txn.method}
                                 </td>
                                 <td className="p-4 font-mono font-black text-white text-right">৳{txn.amount.toLocaleString()}</td>
                                 <td className="p-4">
-                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                        txn.status === 'Paid' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
-                                        txn.status === 'Processing' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 
-                                        'bg-red-500/10 text-red-400 border-red-500/20'
-                                    }`}>
-                                        {txn.status}
-                                    </span>
+                                    {isAdmin && editingStatusId === txn.id ? (
+                                        <select 
+                                            value={txn.status}
+                                            onChange={(e) => handleStatusChange(txn.id, e.target.value as PayoutRequest['status'])}
+                                            onBlur={() => setEditingStatusId(null)}
+                                            autoFocus
+                                            className="bg-orbit-900 border border-orbit-700 rounded-lg px-2 py-1 text-[10px] font-black uppercase text-white outline-none focus:border-orbit-500"
+                                        >
+                                            <option value="Pending">Pending</option>
+                                            <option value="Processing">Processing</option>
+                                            <option value="Paid">Paid</option>
+                                            <option value="Rejected">Rejected</option>
+                                        </select>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(txn.status)}`}>
+                                                {txn.status}
+                                            </span>
+                                            {isAdmin && (
+                                                <button 
+                                                    onClick={() => setEditingStatusId(txn.id)}
+                                                    className="p-1 text-gray-500 hover:text-orbit-400 transition-colors"
+                                                >
+                                                    <Edit2 size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="p-4 text-right">
                                     <button onClick={() => setReceiptTransaction(txn)} className="p-2 text-gray-400 hover:text-white hover:bg-orbit-700 rounded-lg transition-colors">
@@ -351,8 +430,8 @@ const PayoutsView: React.FC = () => {
                             <div className="text-5xl font-black text-white tracking-tighter">৳{parseFloat(amount).toLocaleString()}</div>
                         </div>
                         <div className="space-y-3 px-2">
-                            <div className="flex justify-between text-sm"><span className="text-gray-500">Method:</span><span className="text-white font-bold uppercase">{paymentMethod}</span></div>
-                            <div className="flex justify-between text-sm"><span className="text-gray-500">Number:</span><span className="text-white font-mono font-bold">{getCurrentNumber()}</span></div>
+                            <div className="flex justify-between text-sm"><span className="text-gray-500">Method:</span><span className="text-white font-bold uppercase">{withdrawalMethod}</span></div>
+                            <div className="flex justify-between text-sm"><span className="text-gray-500">Number:</span><span className="text-white font-mono font-bold">{getAccountNumber(withdrawalMethod)}</span></div>
                             <div className="flex justify-between text-sm"><span className="text-gray-500">Estimated Arrival:</span><span className="text-green-400 font-bold">10-30 Mins</span></div>
                         </div>
                         <button onClick={confirmWithdrawal} className="w-full py-4 bg-green-500 hover:bg-green-400 text-white font-black rounded-2xl shadow-xl shadow-green-500/20 transition-all transform active:scale-95">
@@ -386,7 +465,7 @@ const PayoutsView: React.FC = () => {
                             </div>
 
                             <div className="space-y-4 pt-4 border-t border-gray-100">
-                                <div className="flex justify-between text-sm"><span className="text-gray-500 font-medium">Date:</span><span className="font-bold">{receiptTransaction.date}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-500 font-medium">Date:</span><span className="font-bold">{new Date(receiptTransaction.timestamp).toLocaleDateString()}</span></div>
                                 <div className="flex justify-between text-sm"><span className="text-gray-500 font-medium">Method:</span><span className="font-bold">{receiptTransaction.method}</span></div>
                                 <div className="flex justify-between text-sm"><span className="text-gray-500 font-medium">Status:</span><span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-widest">{receiptTransaction.status}</span></div>
                             </div>

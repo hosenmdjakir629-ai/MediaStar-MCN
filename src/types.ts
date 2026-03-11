@@ -24,6 +24,11 @@ export enum TabView {
   MULTI_PLATFORM = 'Multi-Platform',
   CHAT = 'Chat',
   RBAC = 'RBAC',
+  CREATOR_DASHBOARD = 'Creator Dashboard',
+  CREATOR_ANALYTICS = 'Creator Analytics',
+  CREATOR_CONTENT = 'Creator Content',
+  CREATOR_COMMUNITY = 'Creator Community',
+  CREATOR_MONETIZATION = 'Creator Monetization',
 }
 
 export interface AnalyticsData {
@@ -45,7 +50,31 @@ export interface Creator {
   revenue: number;
   niche: string;
   avatarUrl: string;
-  status: 'Active' | 'Pending' | 'Inactive';
+  status: 'Active' | 'Pending' | 'Suspended' | 'Inactive';
   trend: 'up' | 'down' | 'flat';
   linkedChannelHandle?: string;
+  youtubeChannelId?: string;
+  isVerified?: boolean;
+  subscriberHistory?: number[];
+}
+
+export interface EarningsRecord {
+  id: string;
+  creatorId: string;
+  month: string;
+  adRevenue: number;
+  brandDealRevenue: number;
+  totalRevenue: number;
+  status: 'Accrued' | 'Ready' | 'Paid';
+}
+
+export interface PayoutRequest {
+  id: string;
+  creatorId: string;
+  amount: number;
+  status: 'Pending' | 'Processing' | 'Paid' | 'Rejected';
+  method: string;
+  timestamp: string;
+  processedAt?: string;
+  reference?: string;
 }

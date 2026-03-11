@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import AIChatbot from './AIChatbot';
+import CreatorSubmitForm from './CreatorSubmitForm';
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock } from 'lucide-react';
+
+import { TabView } from '../types';
 
 interface HomePageProps {
   onLoginClick: () => void;
+  onLogin?: (tab?: TabView) => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
+const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Contact Form State
-  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
-  const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success'>('idle');
   
   // FAQ State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -46,16 +46,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
         behavior: "smooth"
       });
     }
-  };
-
-  const handleContactSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      setFormStatus('sending');
-      setTimeout(() => {
-          setFormStatus('success');
-          setContactForm({ name: '', email: '', message: '' });
-          setTimeout(() => setFormStatus('idle'), 3000);
-      }, 1500);
   };
 
   return (
@@ -184,6 +174,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
               desc="Advanced tools to manage copyright claims and protect your original videos from being reuploaded or misused by others." 
               color="text-red-400" 
               gradient="from-red-500/20 to-orange-500/5" 
+              onClick={() => onLogin && onLogin(TabView.CONTENT_ID)}
             />
             <FeatureCard 
               icon={Music} 
@@ -263,8 +254,8 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
                    <p className="text-gray-400 text-lg mb-8 leading-relaxed">Managing thousands of assets requires more than a standard dashboard. Our proprietary CMS tools streamline your workflow.</p>
                    <div className="space-y-6">
                        <ToolItem icon={FileText} title="Bulk Metadata Editing" desc="Update thousands of video descriptions, tags, and titles in seconds." />
-                       <ToolItem icon={Layers} title="Asset Labels & Ownership" desc="Precise control over territorial rights and claiming rules across regions." />
-                       <ToolItem icon={Scale} title="Conflict Resolution" desc="We handle the manual work of resolving copyright disputes so you don't have to." />
+                       <ToolItem icon={Layers} title="Asset Labels & Ownership" desc="Precise control over territorial rights and claiming rules across regions." onClick={() => onLogin && onLogin(TabView.CONTENT_ID)} />
+                       <ToolItem icon={Scale} title="Conflict Resolution" desc="We handle the manual work of resolving copyright disputes so you don't have to." onClick={() => onLogin && onLogin(TabView.CONTENT_ID)} />
                        <ToolItem icon={BarChart3} title="Detailed Reporting" desc="Transparent, downloadable financial reports that make accounting a breeze." />
                    </div>
                </div>
@@ -320,19 +311,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
                         </div>
                          <a href="https://wa.me/8801927694437" target="_blank" rel="noreferrer" className="ml-auto px-4 py-2 bg-green-500 hover:bg-green-400 text-white text-xs font-bold rounded-lg transition-colors">Chat</a>
                     </div>
-                    <p className="text-gray-400 mb-8">Have questions about joining? Fill out the form below and our recruitment team will get back to you within 24 hours.</p>
-                    <form onSubmit={handleContactSubmit} className="space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <input type="text" value={contactForm.name} onChange={(e) => setContactForm({...contactForm, name: e.target.value})} placeholder="Your Name" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-                            <input type="email" value={contactForm.email} onChange={(e) => setContactForm({...contactForm, email: e.target.value})} placeholder="you@example.com" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-                        </div>
-                        <textarea value={contactForm.message} onChange={(e) => setContactForm({...contactForm, message: e.target.value})} placeholder="Tell us about your channel..." className="w-full h-32 bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors resize-none" required />
-                        <button type="submit" disabled={formStatus === 'sending' || formStatus === 'success'} className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 ${formStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
-                            {formStatus === 'idle' && <><span>Send Message</span><Send size={18} /></>}
-                            {formStatus === 'sending' && <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span><span>Sending...</span></>}
-                            {formStatus === 'success' && <><CheckCircle size={18} /><span>Message Sent!</span></>}
-                        </button>
-                    </form>
+                    <CreatorSubmitForm />
                 </div>
             </div>
         </div>
@@ -357,8 +336,11 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick }) => {
 };
 
 // Helper Components
-const FeatureCard = ({ icon: Icon, title, desc, color, gradient }: { icon: any, title: string, desc: string, color: string, gradient: string }) => (
-  <div className="p-8 rounded-3xl bg-orbit-800/50 border border-white/5 hover:bg-orbit-800 transition-all group relative overflow-hidden">
+const FeatureCard = ({ icon: Icon, title, desc, color, gradient, onClick }: { icon: any, title: string, desc: string, color: string, gradient: string, onClick?: () => void }) => (
+  <div 
+    className={`p-8 rounded-3xl bg-orbit-800/50 border border-white/5 hover:bg-orbit-800 transition-all group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+    onClick={onClick}
+  >
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
     <div className="relative z-10">
       <div className="w-14 h-14 rounded-2xl bg-orbit-900 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><Icon className={`w-7 h-7 ${color}`} /></div>
@@ -368,8 +350,11 @@ const FeatureCard = ({ icon: Icon, title, desc, color, gradient }: { icon: any, 
   </div>
 );
 
-const ToolItem = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
-    <div className="flex items-start gap-4">
+const ToolItem = ({ icon: Icon, title, desc, onClick }: { icon: any, title: string, desc: string, onClick?: () => void }) => (
+    <div 
+        className={`flex items-start gap-4 p-4 rounded-xl hover:bg-orbit-800/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={onClick}
+    >
         <div className="p-2 bg-orbit-800 border border-orbit-700 rounded-lg shrink-0"><Icon className="text-indigo-400 w-5 h-5" /></div>
         <div>
             <h4 className="text-white font-bold mb-1">{title}</h4>

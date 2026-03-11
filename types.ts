@@ -11,6 +11,8 @@ export interface Creator {
   status: 'Active' | 'Pending' | 'Suspended' | 'Processing';
   trend: 'up' | 'down' | 'flat';
   linkedChannelHandle?: string;
+  youtubeChannelId?: string;
+  isVerified?: boolean;
   lastSynced?: string;
   monetizationStatus?: 'Enabled' | 'Disabled';
   uploadPolicy?: string;
@@ -56,4 +58,52 @@ export enum TabView {
   MULTI_PLATFORM = 'MULTI_PLATFORM',
   CHAT = 'CHAT',
   RBAC = 'RBAC',
+  CREATOR_DASHBOARD = 'CREATOR_DASHBOARD',
+  CREATOR_ANALYTICS = 'CREATOR_ANALYTICS',
+  CREATOR_CONTENT = 'CREATOR_CONTENT',
+  CREATOR_COMMUNITY = 'CREATOR_COMMUNITY',
+  CREATOR_MONETIZATION = 'CREATOR_MONETIZATION',
+}
+
+export interface EarningsRecord {
+  id: string;
+  creatorId: string;
+  month: string;
+  adRevenue: number;
+  brandDealRevenue: number;
+  totalRevenue: number;
+  status: 'Accrued' | 'Ready' | 'Paid';
+}
+
+export interface PayoutRequest {
+  id: string;
+  creatorId: string;
+  amount: number;
+  status: 'Pending' | 'Processing' | 'Paid' | 'Rejected';
+  method: string;
+  timestamp: string;
+  processedAt?: string;
+  reference?: string;
+}
+
+export interface CopyrightClaim {
+  id: string;
+  videoId: string;
+  videoTitle: string;
+  claimant: string;
+  type: 'Audio' | 'Video' | 'Melody';
+  status: 'Active' | 'Disputed' | 'Released' | 'Appealed';
+  date: string;
+  policy: 'Monetize' | 'Track' | 'Block';
+  creatorId: string;
+}
+
+export interface ContentAsset {
+  id: string;
+  title: string;
+  type: 'Web' | 'Music Video' | 'Sound Recording' | 'Episode';
+  ownership: string;
+  matches: number;
+  dailyViews: number;
+  status: 'Active' | 'Inactive';
 }

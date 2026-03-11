@@ -3,10 +3,6 @@
  * YouTube Data API v3 Service
  */
 
-const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
-// Using the provided API Key from environment or fallback
-const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA3laj29mmMOi65O1E4HHR0eNYmBk0iDqk';
-
 export interface YouTubeChannelData {
   id: string;
   title: string;
@@ -25,7 +21,6 @@ export interface YouTubeChannelData {
 }
 
 export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeChannelData | null> => {
-  const apiKey = API_KEY;
   const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
 
   // Mock Fallback Generator
@@ -47,73 +42,33 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
   });
 
   try {
-    // If no key is present, return mock data immediately
-    if (!apiKey || apiKey.includes('YOUR_API_KEY')) {
-      console.warn("OrbitX MCN: No valid API_KEY found. Returning mock YouTube data.");
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+    // Call our backend proxy instead of direct Google API
+    const response = await fetch(`/api/youtube/channel/${encodeURIComponent(cleanHandle)}`);
+
+    if (!response.ok) {
+      if (response.status === 500) {
+        // Likely API key missing on server, use mock
+        console.warn("OrbitX MCN: Backend API error (likely missing key). Falling back to mock.");
+        return getMockData();
+      }
+      throw new Error(`Backend API error: ${response.statusText}`);
+    }
+
+    const item = await response.json();
+    
+    return {
+      id: item.id,
+      title: item.snippet.title,
+      customUrl: item.snippet.customUrl,
+      thumbnails: item.snippet.thumbnails,
+      statistics: item.statistics
+    };
+  } catch (error) {
+    if (error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted'))) {
+      console.warn("OrbitX MCN: YouTube fetch was aborted. Returning mock data.");
       return getMockData();
     }
-
-    // Step 1: Use the search API to find the channel ID from the handle.
-    const searchResponse = await fetch(
-      `${YOUTUBE_API_BASE}/search?part=snippet&q=${cleanHandle}&type=channel&key=${apiKey}`
-    );
-
-    if (!searchResponse.ok) {
-      throw new Error(`YouTube Search API error: ${searchResponse.statusText}`);
-    }
-
-    const searchData = await searchResponse.json();
-
-    if (!searchData.items || searchData.items.length === 0) {
-      // As a fallback, try the channels endpoint
-      const channelResponse = await fetch(
-        `${YOUTUBE_API_BASE}/channels?part=snippet,statistics&forHandle=${cleanHandle}&key=${apiKey}`
-      );
-      if (channelResponse.ok) {
-         const channelData = await channelResponse.json();
-         if (channelData.items && channelData.items.length > 0) {
-           const item = channelData.items[0];
-            return {
-              id: item.id,
-              title: item.snippet.title,
-              customUrl: item.snippet.customUrl,
-              thumbnails: item.snippet.thumbnails,
-              statistics: item.statistics
-            };
-         }
-      }
-      return null;
-    }
-    
-    const channelId = searchData.items[0].id.channelId;
-
-    // Step 2: Fetch channel details using the obtained channel ID.
-    const channelDetailsResponse = await fetch(
-      `${YOUTUBE_API_BASE}/channels?part=snippet,statistics&id=${channelId}&key=${apiKey}`
-    );
-
-    if (!channelDetailsResponse.ok) {
-       throw new Error(`YouTube Channel Details API error: ${channelDetailsResponse.statusText}`);
-    }
-
-    const channelDetailsData = await channelDetailsResponse.json();
-    
-    if (channelDetailsData.items && channelDetailsData.items.length > 0) {
-      const item = channelDetailsData.items[0];
-      return {
-        id: item.id,
-        title: item.snippet.title,
-        customUrl: item.snippet.customUrl,
-        thumbnails: item.snippet.thumbnails,
-        statistics: item.statistics
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error("OrbitX MCN: Error fetching YouTube data, falling back to mock.", error);
+    console.error("OrbitX MCN: Error fetching YouTube data from backend, falling back to mock.", error);
     // Return mock data on API failure to keep app usable
     return getMockData();
   }

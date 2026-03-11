@@ -26,8 +26,11 @@
         "revenue": { "type": "number", "description": "Monthly revenue." },
         "niche": { "type": "string", "description": "Content niche." },
         "avatarUrl": { "type": "string", "format": "uri", "description": "Avatar image URL." },
-        "status": { "type": "string", "enum": ["Active", "Pending", "Suspended"], "description": "Creator status." },
+        "status": { "type": "string", "enum": ["Active", "Pending", "Suspended", "Inactive"], "description": "Creator status." },
         "trend": { "type": "string", "enum": ["up", "down", "flat"], "description": "Performance trend." },
+        "linkedChannelHandle": { "type": "string", "description": "YouTube handle (@handle)." },
+        "youtubeChannelId": { "type": "string", "description": "YouTube Channel ID (UC...)." },
+        "isVerified": { "type": "boolean", "description": "Whether the channel is verified by the MCN." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
         "createdBy": { "type": "string", "description": "UID of the user who added this creator." }
       },
@@ -58,6 +61,48 @@
         "timestamp": { "type": "string", "format": "date-time", "description": "ISO timestamp for sorting." }
       },
       "required": ["date", "views", "revenue", "subs", "timestamp"]
+    },
+    "Earnings": {
+      "title": "Earnings",
+      "description": "Monthly earnings record for a creator.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string", "description": "UID of the creator." },
+        "month": { "type": "string", "description": "Month string (e.g., '2024-03')." },
+        "adRevenue": { "type": "number", "description": "Revenue from YouTube ads." },
+        "brandDealRevenue": { "type": "number", "description": "Revenue from brand deals." },
+        "totalRevenue": { "type": "number", "description": "Total monthly revenue." },
+        "status": { "type": "string", "enum": ["Accrued", "Ready", "Paid"], "description": "Payment status of these earnings." }
+      },
+      "required": ["creatorId", "month", "adRevenue", "brandDealRevenue", "totalRevenue", "status"]
+    },
+    "Payout": {
+      "title": "Payout",
+      "description": "A withdrawal request or payment record.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string", "description": "UID of the creator." },
+        "amount": { "type": "number", "description": "Amount in BDT." },
+        "status": { "type": "string", "enum": ["Pending", "Processing", "Paid", "Rejected"], "description": "Status of the payout." },
+        "method": { "type": "string", "description": "Payment method used." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time of request." },
+        "processedAt": { "type": "string", "format": "date-time", "description": "Time of completion." },
+        "reference": { "type": "string", "description": "Transaction reference ID." }
+      },
+      "required": ["creatorId", "amount", "status", "method", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Admin notification.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Creator name." },
+        "channelName": { "type": "string", "description": "Channel name." },
+        "subscribers": { "type": "number", "description": "Subscriber count." },
+        "status": { "type": "string", "enum": ["unread", "read"], "description": "Notification status." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time of notification." }
+      },
+      "required": ["name", "channelName", "subscribers", "status", "timestamp"]
     }
   },
   "firestore": {
@@ -76,6 +121,18 @@
     "/analytics/{analyticsId}": {
       "schema": { "$ref": "#/entities/Analytics" },
       "description": "Stores daily analytics data."
+    },
+    "/earnings/{earningsId}": {
+      "schema": { "$ref": "#/entities/Earnings" },
+      "description": "Stores monthly earnings records."
+    },
+    "/payouts/{payoutId}": {
+      "schema": { "$ref": "#/entities/Payout" },
+      "description": "Stores payout requests and history."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Stores admin notifications."
     }
   }
 }

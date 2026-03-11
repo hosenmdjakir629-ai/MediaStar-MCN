@@ -63,7 +63,11 @@ export const generateContentStrategy = async (
     return JSON.parse(text) as AIStrategyResponse;
 
   } catch (error) {
-    console.warn("OrbitX MCN: Gemini API error or missing key. Returning mock strategy.", error);
+    if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
+      console.warn("OrbitX MCN: Gemini request aborted. Returning mock strategy.");
+    } else {
+      console.warn("OrbitX MCN: Gemini API error or missing key. Returning mock strategy.", error);
+    }
     
     // Simulate network delay for realism
     await new Promise(resolve => setTimeout(resolve, 1500));

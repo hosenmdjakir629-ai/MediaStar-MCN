@@ -15,25 +15,44 @@ import SystemLogsView from './components/SystemLogsView';
 import AdminView from './components/AdminView';
 import LoginView from './components/LoginView';
 import HomePage from './components/HomePage';
-import { TabView, AnalyticsData, Creator } from './types';
+import CreatorDashboardView from './components/CreatorDashboardView';
+import EarningsView from './components/EarningsView';
+import ContentIDView from './components/ContentIDView';
+import { TabView, AnalyticsData, Creator, EarningsRecord, PayoutRequest } from './types';
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
-import { auth, db, logOut } from './src/firebase';
+import { auth, db, logOut, handleFirestoreError, OperationType } from './src/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'viewer' | 'creator'>('viewer');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [currentTab, setCurrentTab] = useState<TabView>(TabView.DASHBOARD);
   
   const [creators, setCreators] = useState<Creator[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([]);
+  const [earnings, setEarnings] = useState<EarningsRecord[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    const handleUncaughtError = (event: ErrorEvent) => {
+      if (event.error instanceof Error && (event.error.name === 'AbortError' || event.error.message.toLowerCase().includes('aborted'))) {
+        console.warn("Uncaught request aborted:", event.error.message);
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('error', handleUncaughtError);
+    return () => window.removeEventListener('error', handleUncaughtError);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setIsAdmin(user.email === 'hosenmdjakir629@gmail.com');
         try {
           const userRef = doc(db, 'users', user.uid);
           const userSnap = await getDoc(userRef);
@@ -43,15 +62,25 @@ const App: React.FC = () => {
             const userData: any = {
               uid: user.uid,
               email: user.email,
-              role: user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'viewer'
+              role: user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'creator'
             };
             if (user.displayName) userData.name = user.displayName;
             if (user.photoURL) userData.photoURL = user.photoURL;
             
             await setDoc(userRef, userData);
+            setUserRole(userData.role);
+            if (userData.role === 'creator') {
+              setCurrentTab(TabView.CREATOR_DASHBOARD);
+            }
+          } else {
+            const role = userSnap.data().role as 'admin' | 'viewer' | 'creator';
+            setUserRole(role);
+            if (role === 'creator' && currentTab === TabView.DASHBOARD) {
+              setCurrentTab(TabView.CREATOR_DASHBOARD);
+            }
           }
         } catch (error) {
-          console.error("Error checking/creating user document:", error);
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
         }
       }
       setIsAuthenticated(!!user);
@@ -73,20 +102,36 @@ const App: React.FC = () => {
       setCreators(creatorsData);
       setIsLoadingData(false);
     }, (error) => {
-      console.error("Error fetching creators:", error);
       setIsLoadingData(false);
+      handleFirestoreError(error, OperationType.LIST, 'creators');
     });
 
     const unsubscribeAnalytics = onSnapshot(collection(db, 'analytics'), (snapshot) => {
       const analyticsData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as AnalyticsData));
       setAnalytics(analyticsData);
     }, (error) => {
-      console.error("Error fetching analytics:", error);
+      handleFirestoreError(error, OperationType.LIST, 'analytics');
+    });
+
+    const unsubscribeEarnings = onSnapshot(collection(db, 'earnings'), (snapshot) => {
+      const earningsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EarningsRecord));
+      setEarnings(earningsData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'earnings');
+    });
+
+    const unsubscribePayouts = onSnapshot(collection(db, 'payouts'), (snapshot) => {
+      const payoutsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PayoutRequest));
+      setPayouts(payoutsData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'payouts');
     });
 
     return () => {
       unsubscribeCreators();
       unsubscribeAnalytics();
+      unsubscribeEarnings();
+      unsubscribePayouts();
     };
   }, [isAuthReady, isAuthenticated]);
 
@@ -117,9 +162,15 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
+  const [pendingTab, setPendingTab] = useState<TabView | null>(null);
+
   const handleLogin = (status: boolean) => {
       // Auth state is handled by onAuthStateChanged
       setShowLogin(false);
+      if (pendingTab) {
+        setCurrentTab(pendingTab);
+        setPendingTab(null);
+      }
   };
 
   const handleLogout = async () => {
@@ -127,8 +178,13 @@ const App: React.FC = () => {
         await logOut();
         setShowOnboarding(false);
         setCurrentTab(TabView.DASHBOARD);
+        setPendingTab(null);
       } catch (error) {
-        console.error("Logout failed", error);
+        if (error instanceof Error && error.message.toLowerCase().includes('aborted')) {
+          console.warn("Logout aborted.");
+        } else {
+          console.error("Logout failed", error);
+        }
       }
   };
 
@@ -144,14 +200,17 @@ const App: React.FC = () => {
       name: data?.name || 'New Creator',
       channelName: data?.channelName || 'New Channel',
       subscribers: data?.subscribers || 0,
-      totalViews: 0,
-      videoCount: 0,
+      totalViews: data?.totalViews || 0,
+      videoCount: data?.videoCount || 0,
       revenue: 0,
       niche: data?.niche || 'General',
       avatarUrl: data?.avatarUrl || `https://picsum.photos/100?random=${Date.now()}`,
-      status: 'Pending',
+      status: data?.status || 'Pending',
       trend: 'flat',
+      subscriberHistory: Array.from({ length: 7 }, () => Math.floor(Math.random() * 1000)),
       linkedChannelHandle: data?.linkedChannelHandle || '',
+      youtubeChannelId: data?.youtubeChannelId || '',
+      isVerified: data?.isVerified || false,
       createdAt: new Date().toISOString(),
       createdBy: auth.currentUser.uid
     };
@@ -166,7 +225,7 @@ const App: React.FC = () => {
         userId: auth.currentUser.uid
       });
     } catch (error) {
-      console.error("Error adding creator to Firestore", error);
+      handleFirestoreError(error, OperationType.CREATE, 'creators');
     }
   };
 
@@ -185,7 +244,7 @@ const App: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error("Error deleting creator from Firestore", error);
+        handleFirestoreError(error, OperationType.DELETE, `creators/${id}`);
       }
     }
   };
@@ -204,31 +263,23 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error("Error updating creator in Firestore", error);
-      if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
-        const errInfo = {
-          error: error.message,
-          operationType: 'update',
-          path: `creators/${updatedCreator.id}`,
-          authInfo: {
-            userId: auth.currentUser?.uid,
-            email: auth.currentUser?.email,
-            emailVerified: auth.currentUser?.emailVerified,
-            isAnonymous: auth.currentUser?.isAnonymous,
-            tenantId: auth.currentUser?.tenantId,
-            providerInfo: auth.currentUser?.providerData.map(provider => ({
-              providerId: provider.providerId,
-              displayName: provider.displayName,
-              email: provider.email,
-              photoUrl: provider.photoURL
-            })) || []
-          }
-        };
-        console.error('Firestore Error: ', JSON.stringify(errInfo));
-        alert('You do not have permission to update this creator. Please contact an administrator.');
-      } else {
-        alert('An error occurred while updating the creator. Please try again.');
-      }
+      handleFirestoreError(error, OperationType.UPDATE, `creators/${updatedCreator.id}`);
+    }
+  };
+
+  const handleAddPayout = async (payout: Omit<PayoutRequest, 'id'>) => {
+    try {
+      await addDoc(collection(db, 'payouts'), payout);
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.CREATE, 'payouts');
+    }
+  };
+
+  const handleUpdatePayout = async (id: string, updates: Partial<PayoutRequest>) => {
+    try {
+      await updateDoc(doc(db, 'payouts', id), updates);
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.UPDATE, `payouts/${id}`);
     }
   };
 
@@ -246,13 +297,13 @@ const App: React.FC = () => {
       case TabView.DASHBOARD:
         return <DashboardView data={analytics} creators={creators} onViewCreators={() => setCurrentTab(TabView.CREATORS)} />;
       case TabView.CREATORS:
-        return <CreatorsView creators={creators} onAddCreator={handleAddCreator} onDeleteCreator={handleDeleteCreator} onUpdateCreator={handleUpdateCreator} />;
+        return <CreatorsView isAdmin={isAdmin} creators={creators} onAddCreator={handleAddCreator} onDeleteCreator={handleDeleteCreator} onUpdateCreator={handleUpdateCreator} />;
       case TabView.ANALYTICS:
         return <AnalyticsView data={analytics} />;
       case TabView.PAYOUTS:
-        return <PayoutsView />;
+        return <PayoutsView isAdmin={isAdmin} payouts={payouts} onAddPayout={handleAddPayout} onUpdatePayout={handleUpdatePayout} availableBalance={earnings.reduce((acc, e) => acc + (e.status === 'Ready' ? e.totalRevenue : 0), 0)} />;
       case TabView.SETTINGS:
-        return <SettingsView />;
+        return <SettingsView onNavigate={setCurrentTab} />;
       case TabView.AI_STRATEGIST:
         return <AIStrategist creators={creators} />;
       case TabView.INTEGRATIONS:
@@ -261,7 +312,7 @@ const App: React.FC = () => {
       case TabView.SYSTEM_LOGS:
         return <SystemLogsView />;
       case TabView.ADMIN_PANEL:
-        return <AdminView />;
+        return userRole === 'admin' ? <AdminView /> : <div className="p-8 text-red-400">Access Denied</div>;
       case TabView.REPORTS:
         return <PlaceholderView title="Performance Reports" />;
       case TabView.MARKETPLACE:
@@ -269,7 +320,7 @@ const App: React.FC = () => {
       case TabView.RESOURCES:
         return <PlaceholderView title="Resources" />;
       case TabView.CONTENT_ID:
-        return <PlaceholderView title="Content ID Claims" />;
+        return <ContentIDView />;
       case TabView.RECRUITMENT:
         return <PlaceholderView title="Recruitment" />;
       case TabView.AI_TOOLS:
@@ -292,6 +343,16 @@ const App: React.FC = () => {
         return <PlaceholderView title="Admin-Creator Chat" />;
       case TabView.RBAC:
         return <PlaceholderView title="Role-Based Access Control" />;
+      case TabView.CREATOR_DASHBOARD:
+        return userRole === 'creator' ? <CreatorDashboardView /> : <div className="p-8 text-red-400">Access Denied</div>;
+      case TabView.CREATOR_ANALYTICS:
+        return userRole === 'creator' ? <PlaceholderView title="Creator Analytics" /> : <div className="p-8 text-red-400">Access Denied</div>;
+      case TabView.CREATOR_CONTENT:
+        return userRole === 'creator' ? <PlaceholderView title="Content Management" /> : <div className="p-8 text-red-400">Access Denied</div>;
+      case TabView.CREATOR_COMMUNITY:
+        return userRole === 'creator' ? <PlaceholderView title="Community & Comments" /> : <div className="p-8 text-red-400">Access Denied</div>;
+      case TabView.CREATOR_MONETIZATION:
+        return userRole === 'creator' ? <EarningsView earnings={earnings} payouts={payouts} onAddPayout={handleAddPayout} availableBalance={earnings.reduce((acc, e) => acc + (e.status === 'Ready' ? e.totalRevenue : 0), 0)} /> : <div className="p-8 text-red-400">Access Denied</div>;
       default:
         return (
           <div className="flex items-center justify-center h-full text-gray-500">
@@ -313,7 +374,13 @@ const App: React.FC = () => {
       if (showLogin) {
           return <LoginView onLogin={handleLogin} onBack={() => setShowLogin(false)} />;
       }
-      return <HomePage onLoginClick={() => setShowLogin(true)} />;
+      return <HomePage 
+        onLoginClick={() => setShowLogin(true)} 
+        onLogin={(tab) => {
+          if (tab) setPendingTab(tab);
+          setShowLogin(true);
+        }} 
+      />;
   }
 
   return (
@@ -336,6 +403,7 @@ const App: React.FC = () => {
             }} 
             onLogout={handleLogout} 
             onClose={() => setIsSidebarOpen(false)}
+            userRole={userRole}
           />
         )}
         
@@ -379,6 +447,29 @@ const App: React.FC = () => {
                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-orbit-900 shadow-lg shadow-red-500/50"></span>
               </button>
               
+              {isAdmin && (
+                <div className="flex items-center bg-black/20 rounded-lg p-1 border border-white/10">
+                  <button 
+                    onClick={() => {
+                      setUserRole('admin');
+                      setCurrentTab(TabView.DASHBOARD);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${userRole === 'admin' ? 'bg-orbit-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Admin
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setUserRole('creator');
+                      setCurrentTab(TabView.CREATOR_DASHBOARD);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${userRole === 'creator' ? 'bg-orbit-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Creator
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center space-x-3 pl-6 border-l border-white/10">
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium text-white">{auth.currentUser?.displayName || 'Network Admin'}</p>

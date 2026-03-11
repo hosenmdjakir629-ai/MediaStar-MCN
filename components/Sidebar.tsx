@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, BarChart3, BrainCircuit, Settings, LogOut, Rocket, Wallet, Blocks, Headphones, X, Terminal, ShieldCheck, FileText, Share2, FolderOpen, AlertTriangle, UserPlus, Sparkles, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Globe, MessageSquare, Lock } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, BrainCircuit, Settings, LogOut, Rocket, Wallet, Blocks, Headphones, X, Terminal, ShieldCheck, FileText, Share2, FolderOpen, AlertTriangle, UserPlus, Sparkles, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Globe, MessageSquare, Lock, Video, MessageCircle, DollarSign } from 'lucide-react';
 import { TabView } from '../types';
 
 interface SidebarProps {
@@ -7,10 +7,11 @@ interface SidebarProps {
   onTabChange: (tab: TabView) => void;
   onLogout: () => void;
   onClose?: () => void;
+  userRole: 'admin' | 'viewer' | 'creator';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, onClose }) => {
-  const navItems = [
+const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, onClose, userRole }) => {
+  const adminNavItems = [
     { id: TabView.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
     { id: TabView.CREATORS, label: 'Creators', icon: Users },
     { id: TabView.ANALYTICS, label: 'Analytics', icon: BarChart3 },
@@ -36,7 +37,23 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
     { id: TabView.MULTI_PLATFORM, label: 'Multi-Platform', icon: Globe },
     { id: TabView.CHAT, label: 'Admin-Creator Chat', icon: MessageSquare },
     { id: TabView.RBAC, label: 'Access Control', icon: Lock },
+    { id: TabView.CREATOR_DASHBOARD, label: 'Creator Dashboard (Preview)', icon: Video },
   ];
+
+  const creatorNavItems = [
+    { id: TabView.CREATOR_DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
+    { id: TabView.CREATOR_ANALYTICS, label: 'Analytics', icon: BarChart3 },
+    { id: TabView.CREATOR_CONTENT, label: 'Content', icon: Video },
+    { id: TabView.CREATOR_COMMUNITY, label: 'Community', icon: MessageCircle },
+    {id: TabView.CREATOR_MONETIZATION, label: 'Monetization', icon: DollarSign },
+    { id: TabView.PAYOUTS, label: 'Payouts', icon: Wallet },
+    { id: TabView.AI_STRATEGIST, label: 'AI Strategist', icon: BrainCircuit },
+    { id: TabView.RESOURCES, label: 'Resources', icon: FolderOpen },
+    { id: TabView.SUPPORT, label: 'Support', icon: Headphones },
+    { id: TabView.SETTINGS, label: 'Settings', icon: Settings },
+  ];
+
+  const navItems = userRole === 'creator' ? creatorNavItems : adminNavItems;
 
   const handleLogoutClick = () => {
     if (confirm('Are you sure you want to logout?')) {

@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Search, Filter, MoreHorizontal, CheckCircle, AlertCircle, Trash2, X, Edit2, Save, XCircle, Camera, Youtube, TrendingUp, DollarSign, Users, Link as LinkIcon, Unlink, RefreshCw, ExternalLink, Check, ShieldCheck, Upload, Mail, UserPlus, Info, HelpCircle, Plus, Briefcase, Zap, Lock, Shield, Globe, Video, Clock, ImageUp } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import { Search, Filter, MoreHorizontal, CheckCircle, AlertCircle, Trash2, X, Edit2, Save, XCircle, Camera, Youtube, TrendingUp, DollarSign, Users, Link as LinkIcon, Unlink, RefreshCw, ExternalLink, Check, ShieldCheck, Upload, Mail, UserPlus, Info, HelpCircle, Plus, Briefcase, Zap, Lock, Shield, Globe, Video, Clock, ImageUp, ShieldAlert } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Creator } from '../types';
 import { fetchChannelDataByHandle } from '../services/youtubeService';
 
@@ -8,9 +9,32 @@ interface CreatorsViewProps {
   onAddCreator: (creator?: Partial<Creator>) => void;
   onDeleteCreator: (id: string) => void;
   onUpdateCreator: (creator: Creator) => void;
+  isAdmin?: boolean;
 }
 
-const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onDeleteCreator, onUpdateCreator }) => {
+const Sparkline = ({ data, trend }: { data: number[], trend: string }) => {
+  const chartData = useMemo(() => data.map((val, i) => ({ value: val })), [data]);
+  const color = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : '#6366f1';
+  
+  return (
+    <div className="w-20 h-8 sm:w-24 sm:h-10">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData}>
+          <Line 
+            type="monotone" 
+            dataKey="value" 
+            stroke={color} 
+            strokeWidth={2} 
+            dot={false} 
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onDeleteCreator, onUpdateCreator, isAdmin }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
@@ -27,13 +51,60 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createChannelName, setCreateChannelName] = useState('');
+  const [createOwnerName, setCreateOwnerName] = useState('');
+  const [createNiche, setCreateNiche] = useState('General');
+  const [createStatus, setCreateStatus] = useState<Creator['status']>('Pending');
+  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [creatorToDelete, setCreatorToDelete] = useState<Creator | null>(null);
   
   // YouTube Sync State
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [channelHandleInput, setChannelHandleInput] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSyncCreator = async (e: React.MouseEvent, creator: Creator) => {
+    e.stopPropagation();
+    if (!creator.linkedChannelHandle) return;
+    
+    setSyncingId(creator.id);
+    try {
+      const data = await fetchChannelDataByHandle(creator.linkedChannelHandle);
+      if (data) {
+        onUpdateCreator({
+          ...creator,
+          channelName: data.title,
+          name: data.title,
+          subscribers: parseInt(data.statistics.subscriberCount),
+          totalViews: parseInt(data.statistics.viewCount),
+          videoCount: parseInt(data.statistics.videoCount),
+          avatarUrl: data.thumbnails.medium.url,
+          youtubeChannelId: data.id,
+          lastSynced: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('operationType')) throw err;
+      if (err instanceof Error && (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'))) {
+          console.warn("YouTube sync aborted.");
+      } else {
+          console.error("Sync error:", err);
+      }
+    } finally {
+      setSyncingId(null);
+    }
+  };
+
+  const handleToggleVerify = (e: React.MouseEvent, creator: Creator) => {
+    e.stopPropagation();
+    onUpdateCreator({
+      ...creator,
+      isVerified: !creator.isVerified
+    });
+  };
 
   const itemsPerPage = 8;
   const filteredCreators = creators.filter(c => 
@@ -133,6 +204,7 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
         setEditForm({
           ...editForm,
           linkedChannelHandle: channelHandleInput,
+          youtubeChannelId: data.id,
           channelName: data.title,
           subscribers: parseInt(data.statistics.subscriberCount),
           totalViews: parseInt(data.statistics.viewCount),
@@ -142,7 +214,12 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
         setSyncSuccess(true);
       }
     } catch (err) {
-      console.error(err);
+      if (err instanceof Error && err.message.includes('operationType')) throw err;
+      if (err instanceof Error && (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'))) {
+        console.warn("YouTube fetch aborted in CreatorsView.");
+      } else {
+        console.error("YouTube fetch error:", err);
+      }
     } finally {
       setIsSyncing(false);
     }
@@ -158,6 +235,20 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
     setShowInviteModal(false);
     setInviteChannelUrl('');
     setInviteEmail('');
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, creator: Creator) => {
+    e.stopPropagation();
+    setCreatorToDelete(creator);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (creatorToDelete) {
+      onDeleteCreator(creatorToDelete.id);
+      setShowDeleteModal(false);
+      setCreatorToDelete(null);
+    }
   };
 
   return (
@@ -179,7 +270,13 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
             <Mail size={18} />
             <span>Invite</span>
           </button>
-          <button onClick={() => { setCreateChannelName(''); setShowCreateModal(true); }} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-orbit-500 hover:bg-orbit-400 text-white rounded-xl font-bold shadow-lg transition-all active:scale-95">
+          <button onClick={() => { 
+            setCreateChannelName(''); 
+            setCreateOwnerName('');
+            setCreateNiche('General');
+            setCreateStatus('Pending');
+            setShowCreateModal(true); 
+          }} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-orbit-500 hover:bg-orbit-400 text-white rounded-xl font-bold shadow-lg transition-all active:scale-95">
             <Plus size={18} />
             <span>Add Creator</span>
           </button>
@@ -194,6 +291,7 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
               <tr>
                 <th className="p-3 sm:p-4 font-bold">Creator Detail</th>
                 <th className="p-3 sm:p-4 font-bold text-center">Lifecycle</th>
+                <th className="p-3 sm:p-4 font-bold text-center">Growth Trend</th>
                 <th className="p-3 sm:p-4 font-bold text-right">Subscribers</th>
                 <th className="p-3 sm:p-4 font-bold text-right">Revenue</th>
                 <th className="p-3 sm:p-4 font-bold text-right">Actions</th>
@@ -206,7 +304,10 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                     <div className="flex items-center space-x-3">
                       <img src={creator.avatarUrl} alt={creator.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-orbit-700 object-cover" />
                       <div>
-                        <div className="font-bold text-white text-xs sm:text-sm group-hover:text-orbit-400 transition-colors">{creator.channelName}</div>
+                        <div className="flex items-center gap-1">
+                          <div className="font-bold text-white text-xs sm:text-sm group-hover:text-orbit-400 transition-colors">{creator.channelName}</div>
+                          {creator.isVerified && <CheckCircle size={12} className="text-orbit-400 fill-orbit-400/10" />}
+                        </div>
                         <div className="text-[10px] sm:text-xs text-gray-500">{creator.name} • {creator.niche}</div>
                       </div>
                     </div>
@@ -216,6 +317,14 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                       {creator.status}
                     </span>
                   </td>
+                  <td className="p-3 sm:p-4">
+                    <div className="flex justify-center">
+                      <Sparkline 
+                        data={creator.subscriberHistory || [10, 25, 15, 35, 20, 45, 30]} 
+                        trend={creator.trend} 
+                      />
+                    </div>
+                  </td>
                   <td className="p-3 sm:p-4 text-right">
                     <div className="text-xs sm:text-sm font-bold text-white font-mono">{formatNumber(creator.subscribers)}</div>
                   </td>
@@ -224,10 +333,29 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                   </td>
                   <td className="p-3 sm:p-4 text-right">
                     <div className="flex items-center justify-end space-x-1 sm:space-x-2">
+                       {isAdmin && (
+                         <>
+                           <button 
+                             onClick={(e) => handleToggleVerify(e, creator)} 
+                             className={`p-1.5 sm:p-2 rounded-lg transition-colors ${creator.isVerified ? 'text-orbit-400 bg-orbit-400/10' : 'text-gray-500 bg-orbit-900/50 hover:text-orbit-400'}`}
+                             title={creator.isVerified ? "Unverify Channel" : "Verify Channel"}
+                           >
+                              <ShieldCheck size={14} className="sm:w-4 sm:h-4" />
+                           </button>
+                           <button 
+                             onClick={(e) => handleSyncCreator(e, creator)} 
+                             disabled={syncingId === creator.id}
+                             className={`p-1.5 sm:p-2 text-gray-400 hover:text-white bg-orbit-900/50 rounded-lg disabled:opacity-50`}
+                             title="Sync Data"
+                           >
+                              <RefreshCw size={14} className={`sm:w-4 sm:h-4 ${syncingId === creator.id ? 'animate-spin' : ''}`} />
+                           </button>
+                         </>
+                       )}
                        <button onClick={(e) => { e.stopPropagation(); handleEditClick(creator); }} className="p-1.5 sm:p-2 text-gray-400 hover:text-white bg-orbit-900/50 rounded-lg">
                           <Edit2 size={14} className="sm:w-4 sm:h-4" />
                        </button>
-                       <button onClick={(e) => { e.stopPropagation(); onDeleteCreator(creator.id); }} className="p-1.5 sm:p-2 text-gray-400 hover:text-red-400 bg-orbit-900/50 rounded-lg">
+                       <button onClick={(e) => handleDeleteClick(e, creator)} className="p-1.5 sm:p-2 text-gray-400 hover:text-red-400 bg-orbit-900/50 rounded-lg">
                           <Trash2 size={14} className="sm:w-4 sm:h-4" />
                        </button>
                     </div>
@@ -290,6 +418,14 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                                     <span className={`px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-black border uppercase ${getStatusStyle(editForm.status)}`}>
                                         {editForm.status}
                                     </span>
+                                    {editForm.isVerified && (
+                                      <span className="flex items-center gap-1 px-2 py-0.5 bg-orbit-400/10 text-orbit-400 border border-orbit-400/20 rounded-full text-[8px] sm:text-[10px] font-black uppercase">
+                                        <ShieldCheck size={10} /> Verified
+                                      </span>
+                                    )}
+                                    {editForm.youtubeChannelId && (
+                                      <span className="text-[8px] sm:text-[10px] text-gray-500 font-mono">ID: {editForm.youtubeChannelId}</span>
+                                    )}
                                 </div>
                               </>
                             )}
@@ -349,6 +485,18 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                                                 onChange={(e) => setEditForm({ ...editForm, niche: e.target.value })}
                                                 className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-orbit-500 shadow-inner"
                                             />
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-orbit-900 rounded-xl border border-orbit-700">
+                                            <span className="text-sm text-gray-300">Verified Channel</span>
+                                            <div className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={editForm.isVerified} 
+                                                    onChange={(e) => setEditForm({...editForm, isVerified: e.target.checked})} 
+                                                    className="sr-only peer" 
+                                                />
+                                                <div className="w-10 h-5 bg-gray-700 rounded-full peer peer-checked:bg-orbit-500 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -421,6 +569,7 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                                              <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-600/20"><Youtube size={24} /></div>
                                              <div>
                                                  <div className="font-bold text-white font-mono">{editForm.linkedChannelHandle}</div>
+                                                  <div className="text-[10px] text-gray-500 font-mono uppercase tracking-tighter">ID: {editForm.youtubeChannelId || 'N/A'}</div>
                                                  <div className="text-xs text-gray-500">Last Synced: {editForm.lastSynced || 'Never'}</div>
                                              </div>
                                          </div>
@@ -546,13 +695,19 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                                                     videoCount: parseInt(data.statistics.videoCount),
                                                     avatarUrl: data.thumbnails.medium.url,
                                                     linkedChannelHandle: channelHandleInput,
+                                                    youtubeChannelId: data.id,
                                                     status: 'Active'
                                                 });
                                                 setShowCreateModal(false);
                                                 setChannelHandleInput('');
                                             }
                                         } catch (err) {
-                                            console.error(err);
+                                            if (err instanceof Error && err.message.includes('operationType')) throw err;
+                                            if (err instanceof Error && (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'))) {
+                                                console.warn("YouTube fetch aborted in CreatorsView.");
+                                            } else {
+                                                console.error(err);
+                                            }
                                         } finally {
                                             setIsSyncing(false);
                                         }
@@ -566,9 +721,32 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                             <p className="text-[10px] text-gray-500 mt-2">Enter a YouTube handle to automatically pull channel data.</p>
                         </div>
                     ) : (
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Channel Name</label>
-                            <input type="text" value={createChannelName} onChange={e => setCreateChannelName(e.target.value)} className="w-full bg-orbit-800 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-orbit-500" placeholder="e.g. MrBeast" />
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Channel Name</label>
+                                <input type="text" value={createChannelName} onChange={e => setCreateChannelName(e.target.value)} className="w-full bg-orbit-800 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-orbit-500" placeholder="e.g. MrBeast" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Owner Name</label>
+                                <input type="text" value={createOwnerName} onChange={e => setCreateOwnerName(e.target.value)} className="w-full bg-orbit-800 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-orbit-500" placeholder="e.g. Jimmy Donaldson" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Niche</label>
+                                <input type="text" value={createNiche} onChange={e => setCreateNiche(e.target.value)} className="w-full bg-orbit-800 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-orbit-500" placeholder="e.g. Entertainment" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Status</label>
+                                <select 
+                                    value={createStatus}
+                                    onChange={(e) => setCreateStatus(e.target.value as Creator['status'])}
+                                    className="w-full bg-orbit-800 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-orbit-500"
+                                >
+                                    <option value="Pending">Pending</option>
+                                    <option value="Processing">Processing</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
                         </div>
                     )}
 
@@ -577,16 +755,40 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                         {inviteStatus !== 'Active' && (
                             <button 
                                 onClick={() => {
-                                    onAddCreator({ channelName: createChannelName, status: 'Processing' });
+                                    onAddCreator({ 
+                                        channelName: createChannelName, 
+                                        name: createOwnerName,
+                                        niche: createNiche,
+                                        status: createStatus,
+                                        isVerified: false
+                                    });
                                     setShowCreateModal(false);
                                 }} 
-                                disabled={!createChannelName}
+                                disabled={!createChannelName || !createOwnerName}
                                 className="flex-1 py-3 bg-orbit-500 hover:bg-orbit-400 text-white rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
                             >
                                 Create
                             </button>
                         )}
                     </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {showDeleteModal && creatorToDelete && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in" onClick={() => setShowDeleteModal(false)}>
+            <div className="bg-orbit-900 border border-orbit-700 rounded-3xl w-full max-w-md shadow-2xl relative p-8 text-center" onClick={e => e.stopPropagation()}>
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ShieldAlert size={40} className="text-red-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Confirm Deletion</h3>
+                <p className="text-gray-400 mb-8">
+                    Are you sure you want to delete <span className="text-white font-bold">{creatorToDelete.name}</span>? This action cannot be undone and will remove all associated data.
+                </p>
+                <div className="flex gap-4">
+                    <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-orbit-700 hover:bg-orbit-600 text-white rounded-xl font-bold transition-colors">Cancel</button>
+                    <button onClick={confirmDelete} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-600/20">Delete</button>
                 </div>
             </div>
         </div>

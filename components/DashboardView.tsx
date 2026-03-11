@@ -1,6 +1,7 @@
-import React from 'react';
-import { Users, Eye, DollarSign, TrendingUp, MoreHorizontal, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Eye, DollarSign, TrendingUp, MoreHorizontal, ArrowRight, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { motion } from 'motion/react';
 import StatCard from './StatCard';
 import { AnalyticsData, Creator } from '../types';
 
@@ -11,6 +12,17 @@ interface DashboardViewProps {
 }
 
 const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCreators }) => {
+  const [tasks, setTasks] = useState([
+    { id: 1, text: 'Review new creator applications', completed: false },
+    { id: 2, text: 'Approve pending payouts', completed: false },
+    { id: 3, text: 'Update system logs', completed: true },
+    { id: 4, text: 'Check AI strategy reports', completed: false },
+  ]);
+
+  const toggleTask = (id: number) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
+
   const topCreators = [...creators]
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 6);
@@ -35,7 +47,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
         <StatCard title="Avg. Engagement" value="8.4%" change="-1.2%" trend="down" icon={TrendingUp} color="purple" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Chart Section */}
         <div className="lg:col-span-2 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl">
           <div className="flex justify-between items-center mb-6">
@@ -73,7 +85,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
         </div>
 
         {/* Top Creators List */}
-        <div className="bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
+        <div className="lg:col-span-1 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
           <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-white">Top Performing</h3>
               <button className="text-gray-400 hover:text-white transition-colors"><MoreHorizontal size={20}/></button>
@@ -97,26 +109,70 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
                   </div>
                   <div>
                     <h4 className="font-bold text-white text-sm group-hover:text-orbit-400 transition-colors">{creator.channelName}</h4>
-                    <p className="text-xs text-gray-500">{creator.subscribers.toLocaleString()} Subs &bull; {creator.niche}</p>
+                    <p className="text-xs text-gray-500">{creator.subscribers.toLocaleString()} Subs</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-white font-mono">৳{creator.revenue.toLocaleString()}</p>
-                  <p className="text-xs text-green-400 flex items-center justify-end gap-0.5">
-                    <TrendingUp size={10} />
-                    {creator.trend === 'up' ? '12%' : creator.trend === 'down' ? '-5%' : '0%'}
-                  </p>
                 </div>
               </div>
             ))}
           </div>
           <button 
             onClick={onViewCreators}
-            className="w-full mt-6 py-3 bg-orbit-500/10 hover:bg-orbit-500/20 text-orbit-400 font-bold text-sm rounded-xl transition-colors border border-orbit-500/20 flex items-center justify-center gap-2 group"
+            className="w-full mt-4 py-2.5 bg-orbit-500/10 hover:bg-orbit-500/20 text-orbit-400 font-bold text-xs rounded-xl transition-colors border border-orbit-500/20 flex items-center justify-center gap-2 group"
           >
-            <span>View All Creators</span>
-            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            <span>View All</span>
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </button>
+        </div>
+
+        {/* Quick Tasks Section */}
+        <div className="lg:col-span-1 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white">Quick Tasks</h3>
+              <div className="text-[10px] font-bold text-orbit-400 uppercase tracking-widest bg-orbit-400/10 px-2 py-1 rounded-full">
+                {tasks.filter(t => !t.completed).length} Pending
+              </div>
+          </div>
+          
+          <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+            {tasks.map((task) => (
+              <div 
+                key={task.id} 
+                onClick={() => toggleTask(task.id)}
+                className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer group ${
+                  task.completed 
+                    ? 'bg-emerald-500/5 border-emerald-500/10 opacity-60' 
+                    : 'bg-white/5 border-transparent hover:border-white/10'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                  task.completed 
+                    ? 'bg-emerald-500 border-emerald-500' 
+                    : 'border-white/20 group-hover:border-white/40'
+                }`}>
+                  {task.completed && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    >
+                      <Check size={12} className="text-white" />
+                    </motion.div>
+                  )}
+                </div>
+                <span className={`text-sm font-medium transition-all ${
+                  task.completed ? 'text-emerald-400 line-through' : 'text-gray-300'
+                }`}>
+                  {task.text}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 pt-4 border-t border-white/5">
+             <p className="text-[10px] text-gray-500 text-center uppercase tracking-widest font-bold">Daily Admin Routine</p>
+          </div>
         </div>
       </div>
     </div>

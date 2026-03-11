@@ -29,7 +29,11 @@ const SystemLogsView: React.FC = () => {
       setLogs(logsData);
       setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching logs:", error);
+      if (error.message?.includes('aborted') || error.code === 'cancelled') {
+        console.warn("SystemLogsView: Logs snapshot aborted.");
+      } else {
+        console.error("Error fetching logs:", error);
+      }
       setIsLoading(false);
     });
 

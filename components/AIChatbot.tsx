@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai/web";
 import { MessageSquare, Send, X, Bot } from 'lucide-react';
 
 const AIChatbot: React.FC = () => {
@@ -52,8 +52,12 @@ When asked about MCN Join Benefits, answer with the following:
       
       setMessages(prev => [...prev, { role: 'bot', text: response.text || 'Sorry, I could not generate a response.' }]);
     } catch (error) {
-      console.error("Error calling Gemini API", error);
-      setMessages(prev => [...prev, { role: 'bot', text: 'Sorry, I encountered an error.' }]);
+      if (error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted'))) {
+        console.warn("AIChatbot: Gemini request aborted.");
+      } else {
+        console.error("Error calling Gemini API", error);
+        setMessages(prev => [...prev, { role: 'bot', text: 'Sorry, I encountered an error.' }]);
+      }
     } finally {
       setIsLoading(false);
     }

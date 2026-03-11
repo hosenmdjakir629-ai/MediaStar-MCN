@@ -1,7 +1,24 @@
-import React from 'react';
-import { ShieldCheck, Users, DollarSign, BarChart3, Settings, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, Users, DollarSign, BarChart3, Settings, AlertCircle, Bell } from 'lucide-react';
+import { db } from '../src/firebase';
+import { collection, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 
 const AdminView: React.FC = () => {
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setNotifications(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleApprove = async (id: string) => {
+    await updateDoc(doc(db, 'notifications', id), { status: 'read' });
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex items-center gap-4">
@@ -10,6 +27,28 @@ const AdminView: React.FC = () => {
       </div>
 
       <p className="text-gray-400 text-lg">Welcome, Administrator. Manage your network, users, and finances from here.</p>
+
+      {/* Notifications */}
+      <div className="bg-orbit-800/50 border border-white/5 rounded-2xl p-6 shadow-xl">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="text-yellow-400" />
+          <h3 className="text-xl font-bold text-white">Notifications</h3>
+        </div>
+        <div className="space-y-2">
+          {notifications.filter(n => n.status === 'unread').map(n => (
+            <div key={n.id} className="bg-orbit-900 border border-white/10 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-white font-bold">New Creator Application Received!</p>
+                <p className="text-gray-400 text-sm">Name: {n.name} | Channel: {n.channelName} | Subs: {n.subscribers}</p>
+              </div>
+              <button onClick={() => handleApprove(n.id)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold">View / Approve</button>
+            </div>
+          ))}
+          {notifications.filter(n => n.status === 'unread').length === 0 && (
+            <p className="text-gray-500 text-sm">No new notifications.</p>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Admin Stat Card 1 */}

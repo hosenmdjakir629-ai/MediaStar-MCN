@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { Save, Bell, User, Check, Shield, Globe, FileText, HelpCircle, X, AlertCircle, Play, Users, Plus, Trash2, Key, Activity } from 'lucide-react';
+import { Save, Bell, User, Check, Shield, Globe, FileText, HelpCircle, X, AlertCircle, Play, Users, Plus, Trash2, Key, Activity, Mail, ExternalLink } from 'lucide-react';
+import { TabView } from '../types';
 
-const SettingsView: React.FC = () => {
+interface SettingsViewProps {
+  onNavigate?: (tab: TabView) => void;
+}
+
+const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   const [saved, setSaved] = useState(false);
   const [defaultPolicy, setDefaultPolicy] = useState('Monetize in all countries');
   const [autoClaim, setAutoClaim] = useState(true);
@@ -18,6 +23,13 @@ const SettingsView: React.FC = () => {
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [responseTime, setResponseTime] = useState<number | null>(null);
 
+  const [emailPrefs, setEmailPrefs] = useState({
+    payouts: true,
+    channelUpdates: true,
+    systemAlerts: false,
+    dailyDigest: true
+  });
+
   const checkServerHealth = async () => {
     setServerStatus('checking');
     const start = Date.now();
@@ -30,6 +42,10 @@ const SettingsView: React.FC = () => {
         setServerStatus('offline');
       }
     } catch (error) {
+      if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
+        console.warn("SettingsView: Health check aborted.");
+        return;
+      }
       setServerStatus('offline');
     }
   };
@@ -205,13 +221,24 @@ const SettingsView: React.FC = () => {
                     <p className="text-xs text-gray-400">Manage global monetization rules.</p>
                 </div>
             </div>
-            <button 
-                onClick={() => setShowPolicyGuide(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-orbit-900 border border-orbit-600 rounded-lg text-sm text-gray-300 hover:text-white hover:border-orbit-500 transition-all"
-            >
-                <HelpCircle size={16} />
-                <span>Policy Guide</span>
-            </button>
+            <div className="flex gap-3">
+                {onNavigate && (
+                    <button 
+                        onClick={() => onNavigate(TabView.CONTENT_ID)}
+                        className="flex items-center gap-2 px-4 py-2 bg-orbit-500 hover:bg-orbit-400 text-white rounded-lg text-sm font-bold transition-all"
+                    >
+                        <ExternalLink size={16} />
+                        <span>Manage Content ID</span>
+                    </button>
+                )}
+                <button 
+                    onClick={() => setShowPolicyGuide(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-orbit-900 border border-orbit-600 rounded-lg text-sm text-gray-300 hover:text-white hover:border-orbit-500 transition-all"
+                >
+                    <HelpCircle size={16} />
+                    <span>Policy Guide</span>
+                </button>
+            </div>
         </div>
 
         <div className="space-y-6 relative z-10">
@@ -261,27 +288,86 @@ const SettingsView: React.FC = () => {
       <div className="bg-orbit-800 rounded-2xl p-8 border border-orbit-700">
          <div className="flex items-center space-x-3 mb-6">
             <Bell className="text-orbit-accent" />
-            <h3 className="text-xl font-bold text-white">Notifications</h3>
+            <h3 className="text-xl font-bold text-white">Notification Preferences</h3>
         </div>
-        <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-orbit-900/50 rounded-xl">
-                <div>
-                    <h4 className="font-medium text-white">Daily Digest</h4>
-                    <p className="text-xs text-gray-500">Receive a daily summary of network performance.</p>
-                </div>
-                 <div className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orbit-500"></div>
+        
+        <div className="space-y-8">
+            {/* General App Notifications */}
+            <div>
+                <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 tracking-wider">App Notifications</h4>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 bg-orbit-900/50 rounded-xl border border-orbit-700/30">
+                        <div>
+                            <h4 className="font-medium text-white">Daily Digest</h4>
+                            <p className="text-xs text-gray-500">Receive a daily summary of network performance in the dashboard.</p>
+                        </div>
+                        <div className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={emailPrefs.dailyDigest} 
+                                onChange={(e) => setEmailPrefs({...emailPrefs, dailyDigest: e.target.checked})}
+                                className="sr-only peer" 
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orbit-500"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-             <div className="flex items-center justify-between p-4 bg-orbit-900/50 rounded-xl">
-                <div>
-                    <h4 className="font-medium text-white">Payment Alerts</h4>
-                    <p className="text-xs text-gray-500">Get notified when payouts are processed.</p>
+
+            {/* Email Notifications */}
+            <div>
+                <div className="flex items-center gap-2 mb-4">
+                    <Mail size={14} className="text-orbit-500" />
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Notifications</h4>
                 </div>
-                <div className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orbit-500"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-4 bg-orbit-900/50 rounded-xl border border-orbit-700/30">
+                        <div>
+                            <h4 className="font-medium text-white">New Payouts</h4>
+                            <p className="text-[10px] text-gray-500">Get notified when revenue is distributed.</p>
+                        </div>
+                        <div className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={emailPrefs.payouts} 
+                                onChange={(e) => setEmailPrefs({...emailPrefs, payouts: e.target.checked})}
+                                className="sr-only peer" 
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orbit-500"></div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-orbit-900/50 rounded-xl border border-orbit-700/30">
+                        <div>
+                            <h4 className="font-medium text-white">Channel Updates</h4>
+                            <p className="text-[10px] text-gray-500">Alerts for linked channel status changes.</p>
+                        </div>
+                        <div className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={emailPrefs.channelUpdates} 
+                                onChange={(e) => setEmailPrefs({...emailPrefs, channelUpdates: e.target.checked})}
+                                className="sr-only peer" 
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orbit-500"></div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-orbit-900/50 rounded-xl border border-orbit-700/30">
+                        <div>
+                            <h4 className="font-medium text-white">System Alerts</h4>
+                            <p className="text-[10px] text-gray-500">Critical security and system maintenance.</p>
+                        </div>
+                        <div className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={emailPrefs.systemAlerts} 
+                                onChange={(e) => setEmailPrefs({...emailPrefs, systemAlerts: e.target.checked})}
+                                className="sr-only peer" 
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orbit-500"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

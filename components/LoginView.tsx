@@ -17,8 +17,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
     setIsLoading(true);
 
     try {
-      await signInWithGoogle();
-      onLogin(true);
+      const user = await signInWithGoogle();
+      if (user) {
+        onLogin(true);
+      }
     } catch (err: any) {
       setError(err.message || 'Connection error. Please try again later.');
     } finally {

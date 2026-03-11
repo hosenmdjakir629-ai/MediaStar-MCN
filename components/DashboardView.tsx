@@ -47,9 +47,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
         <StatCard title="Avg. Engagement" value="8.4%" change="-1.2%" trend="down" icon={TrendingUp} color="purple" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {/* Chart Section */}
-        <div className="lg:col-span-2 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl">
+        <div className="md:col-span-2 lg:col-span-2 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <div>
                  <h3 className="text-lg font-bold text-white">Revenue Overview</h3>
@@ -85,7 +85,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
         </div>
 
         {/* Top Creators List */}
-        <div className="lg:col-span-1 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
+        <div className="md:col-span-1 lg:col-span-1 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
           <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-white">Top Performing</h3>
               <button className="text-gray-400 hover:text-white transition-colors"><MoreHorizontal size={20}/></button>
@@ -128,7 +128,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
         </div>
 
         {/* Quick Tasks Section */}
-        <div className="lg:col-span-1 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
+        <div className="md:col-span-1 lg:col-span-1 bg-orbit-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col">
           <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-white">Quick Tasks</h3>
               <div className="text-[10px] font-bold text-orbit-400 uppercase tracking-widest bg-orbit-400/10 px-2 py-1 rounded-full">

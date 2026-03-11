@@ -24,6 +24,8 @@ import { auth, db, logOut, handleFirestoreError, OperationType } from './src/fir
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 
+import { motion, AnimatePresence } from 'motion/react';
+
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -498,7 +500,17 @@ const App: React.FC = () => {
           </header>
 
           <div className="p-4 sm:p-8">
-            {renderContent()}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {renderContent()}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
         

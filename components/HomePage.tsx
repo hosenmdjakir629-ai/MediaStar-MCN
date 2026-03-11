@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import CreatorSubmitForm from './CreatorSubmitForm';
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 import { TabView } from '../types';
 
@@ -118,36 +119,61 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden bg-gradient-to-br from-orbit-900 to-black">
         <div className="max-w-7xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-indigo-300 mb-8 animate-fade-in-up">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-indigo-300 mb-8"
+          >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
             </span>
             Accepting New Creators for 2026
-          </div>
+          </motion.div>
           
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight animate-fade-in-up" style={{animationDelay: '0.1s'}}>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight"
+          >
             YouTube Certified <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">MCN Network in Bangladesh</span>
-          </h1>
+          </motion.h1>
           
-          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
             Stop losing money to re-uploads. Our YouTube Certified Content ID services ensure that you get paid for every view your content generates worldwide.
-          </p>
+          </motion.p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
             <a href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" target="_blank" rel="noreferrer" className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl font-bold text-lg text-white shadow-xl shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
               Apply Now
             </a>
-          </div>
+          </motion.div>
 
-          <div className="mt-20 relative mx-auto max-w-5xl animate-fade-in-up" style={{animationDelay: '0.5s'}}>
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="mt-20 relative mx-auto max-w-5xl"
+          >
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur opacity-30"></div>
             <div className="relative bg-orbit-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2426&auto=format&fit=crop" alt="CMS Dashboard Preview" className="w-full h-auto opacity-90" />
                <div className="absolute inset-0 bg-gradient-to-t from-orbit-900 via-transparent to-transparent"></div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -335,17 +361,27 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
 
 // Helper Components
 const FeatureCard = ({ icon: Icon, title, desc, color, gradient, onClick }: { icon: any, title: string, desc: string, color: string, gradient: string, onClick?: () => void }) => (
-  <div 
+  <motion.div 
+    whileInView={{ opacity: 1, y: 0 }}
+    initial={{ opacity: 0, y: 20 }}
+    viewport={{ once: true }}
+    whileHover={{ y: -8, scale: 1.02 }}
+    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     className={`p-8 rounded-3xl bg-orbit-800/50 border border-white/5 hover:bg-orbit-800 transition-all group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
     onClick={onClick}
   >
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
     <div className="relative z-10">
-      <div className="w-14 h-14 rounded-2xl bg-orbit-900 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><Icon className={`w-7 h-7 ${color}`} /></div>
+      <motion.div 
+        whileHover={{ rotate: 15, scale: 1.1 }}
+        className="w-14 h-14 rounded-2xl bg-orbit-900 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+      >
+        <Icon className={`w-7 h-7 ${color}`} />
+      </motion.div>
       <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
       <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
     </div>
-  </div>
+  </motion.div>
 );
 
 const ToolItem = ({ icon: Icon, title, desc, onClick }: { icon: any, title: string, desc: string, onClick?: () => void }) => (

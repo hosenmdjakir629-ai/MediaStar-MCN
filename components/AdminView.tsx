@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Users, DollarSign, BarChart3, Settings, AlertCircle, Bell } from 'lucide-react';
-import { db } from '../src/firebase';
+import { db, handleFirestoreError, OperationType } from '../src/firebase';
 import { collection, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 
 const AdminView: React.FC = () => {

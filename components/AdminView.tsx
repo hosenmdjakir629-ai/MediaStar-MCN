@@ -16,7 +16,11 @@ const AdminView: React.FC = () => {
   }, []);
 
   const handleApprove = async (id: string) => {
-    await updateDoc(doc(db, 'notifications', id), { status: 'read' });
+    try {
+      await updateDoc(doc(db, 'notifications', id), { status: 'read' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `notifications/${id}`);
+    }
   };
 
   return (

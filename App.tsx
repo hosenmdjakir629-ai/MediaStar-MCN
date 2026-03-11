@@ -45,8 +45,18 @@ const App: React.FC = () => {
         event.preventDefault();
       }
     };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason instanceof Error && (event.reason.name === 'AbortError' || event.reason.message.toLowerCase().includes('aborted'))) {
+        console.warn("Unhandled promise rejection (aborted):", event.reason.message);
+        event.preventDefault();
+      }
+    };
     window.addEventListener('error', handleUncaughtError);
-    return () => window.removeEventListener('error', handleUncaughtError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', handleUncaughtError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
   }, []);
 
   useEffect(() => {

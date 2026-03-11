@@ -16,6 +16,14 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
   
   // FAQ State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const FAQS = [
     { q: "What are the requirements to join OrbitX MCN?", a: "We typically look for channels with at least 1,000 subscribers and 4,000 watch hours, adhering to YouTube's monetization policies. However, we review high-potential channels individually." },
@@ -54,6 +62,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
          <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow"></div>
          <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow" style={{animationDelay: '2s'}}></div>
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
       </div>
 
       {/* Navbar */}
@@ -73,6 +82,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white transition-colors cursor-pointer">Features</a>
             <a href="#advanced-features" onClick={(e) => scrollToSection(e, 'advanced-features')} className="hover:text-white transition-colors cursor-pointer">Advanced</a>
             <a href="#tools" onClick={(e) => scrollToSection(e, 'tools')} className="hover:text-white transition-colors cursor-pointer">Tools</a>
+            <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition-colors cursor-pointer">Pricing</a>
             <a href="#support" onClick={(e) => scrollToSection(e, 'support')} className="hover:text-white transition-colors cursor-pointer">Support</a>
           </div>
 
@@ -110,6 +120,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             <div className="flex flex-col space-y-6">
               <a href="#features" onClick={(e) => { scrollToSection(e, 'features'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Features</a>
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
+              <a href="#pricing" onClick={(e) => { scrollToSection(e, 'pricing'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Pricing</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
               <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="text-left text-lg font-medium text-indigo-400">Log In</button>
               <motion.a 
@@ -147,10 +158,10 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight"
+            className="text-5xl sm:text-7xl md:text-9xl font-display uppercase tracking-tighter mb-8 leading-[0.85] text-white"
           >
-            YouTube Certified <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">MCN Network in Bangladesh</span>
+            Empowering the Next Generation of <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">YouTube Creators</span>
           </motion.h1>
           
           <motion.p 
@@ -159,7 +170,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Stop losing money to re-uploads. Our YouTube Certified Content ID services ensure that you get paid for every view your content generates worldwide.
+            Join 100+ creators with 10M+ subscribers and unlock brand deals, collaborations, and global growth opportunities.
           </motion.p>
           
           <motion.div 
@@ -201,81 +212,275 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             className="mt-20 relative mx-auto max-w-5xl"
           >
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur opacity-30"></div>
-            <div className="relative bg-orbit-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
-               <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2426&auto=format&fit=crop" alt="CMS Dashboard Preview" className="w-full h-auto opacity-90" />
-               <div className="absolute inset-0 bg-gradient-to-t from-orbit-900 via-transparent to-transparent"></div>
+            
+            {/* Floating Stats Around Dashboard */}
+            <div className="absolute -left-20 top-1/2 -translate-y-1/2 z-50 hidden xl:flex flex-col gap-6">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="bg-orbit-900/80 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-1">Total Network Views</div>
+                <div className="text-3xl font-display">1.2B+</div>
+                <div className="mt-2 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    whileInView={{ width: '70%' }}
+                    className="h-full bg-indigo-500"
+                  />
+                </div>
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="bg-orbit-900/80 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-widest text-purple-400 mb-1">Creator Payouts</div>
+                <div className="text-3xl font-display">$42M</div>
+                <div className="mt-2 text-[10px] text-emerald-400 font-medium">+12.5% this month</div>
+              </motion.div>
             </div>
+
+            {/* Right Side Floating Elements */}
+            <div className="absolute -right-20 top-1/2 -translate-y-1/2 z-50 hidden xl:flex flex-col gap-6">
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="bg-orbit-900/80 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-widest text-pink-400 mb-1">Live Creators</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-pink-500 animate-ping"></div>
+                  <div className="text-3xl font-display">842</div>
+                </div>
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+                className="bg-orbit-900/80 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-widest text-cyan-400 mb-1">Global Reach</div>
+                <div className="text-3xl font-display">140+</div>
+                <div className="text-[10px] text-gray-500 mt-1">Countries & Regions</div>
+              </motion.div>
+            </div>
+
+            <div className="relative bg-orbit-900 border border-white/20 rounded-[2rem] shadow-[0_0_80px_-15px_rgba(99,102,241,0.4)] overflow-hidden transform hover:scale-[1.02] transition-all duration-700 aspect-video group">
+               {/* Pulsing Neon Border */}
+               <div className="absolute inset-0 border border-indigo-500/30 rounded-[2rem] animate-pulse pointer-events-none z-40"></div>
+               
+               {/* Glass Overlay & Reflection */}
+               <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none z-10"></div>
+               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none z-10 bg-[radial-gradient(circle_at_50%_-20%,rgba(99,102,241,0.15),transparent_70%)]"></div>
+               
+               {/* Monitor Bezel Text */}
+               <div className="absolute top-0 inset-x-0 h-8 flex items-center justify-center z-40 pointer-events-none">
+                 <div className="text-[10px] font-display uppercase tracking-[0.5em] text-white/10">OrbitX Advanced Monitoring System</div>
+               </div>
+
+               {/* Digital Clock Overlay */}
+               <div className="absolute top-4 right-6 z-40 flex flex-col items-end pointer-events-none">
+                 <div className="text-xl font-mono text-indigo-400/80 tracking-tighter tabular-nums">
+                   {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                 </div>
+                 <div className="text-[8px] font-mono text-indigo-400/40 uppercase tracking-widest">Network Time (UTC)</div>
+               </div>
+
+               {/* Status Bar */}
+               <div className="absolute top-4 left-6 z-20 flex items-center gap-3">
+                 <div className="flex gap-1.5">
+                   <div className="w-2.5 h-2.5 rounded-full bg-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse"></div>
+                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
+                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+                 </div>
+                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 bg-white/5 px-2 py-0.5 rounded border border-white/5 backdrop-blur-md">Live Network Feed</span>
+               </div>
+
+               {/* Grid Pattern Overlay */}
+               <div className="absolute inset-0 pointer-events-none z-10 opacity-[0.03] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+
+               {/* Radar SVG Overlay */}
+               <div className="absolute bottom-8 left-8 w-24 h-24 z-40 pointer-events-none opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                 <svg viewBox="0 0 100 100" className="w-full h-full text-indigo-500">
+                   <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+                   <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" />
+                   <circle cx="50" cy="50" r="10" fill="none" stroke="currentColor" strokeWidth="0.5" />
+                   <motion.line 
+                     x1="50" y1="50" x2="50" y2="2" 
+                     stroke="currentColor" strokeWidth="1"
+                     animate={{ rotate: 360 }}
+                     transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                     style={{ originX: "50px", originY: "50px" }}
+                   />
+                 </svg>
+               </div>
+
+               {/* Data Stream Overlay */}
+               <div className="absolute top-1/2 right-4 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-1 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                 {[...Array(5)].map((_, i) => (
+                   <motion.div 
+                     key={i}
+                     initial={{ opacity: 0, x: 10 }}
+                     animate={{ opacity: [0, 1, 0], x: [10, 0, -10] }}
+                     transition={{ duration: 2, repeat: Infinity, delay: i * 0.4 }}
+                     className="text-[7px] font-mono text-indigo-400/60 whitespace-nowrap"
+                   >
+                     FETCH_PACKET_ID_{Math.random().toString(36).substring(7).toUpperCase()} ... OK
+                   </motion.div>
+                 ))}
+               </div>
+
+               {/* Scanning Line */}
+               <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden opacity-20">
+                 <motion.div 
+                   animate={{ y: ['-100%', '200%'] }}
+                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                   className="w-full h-[100px] bg-gradient-to-b from-transparent via-indigo-500/10 to-transparent"
+                 />
+               </div>
+
+               {/* Corner Data Points */}
+               <div className="absolute bottom-12 right-8 z-40 flex flex-col items-end gap-1 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                 <div className="flex items-center gap-2">
+                   <div className="w-1 h-1 rounded-full bg-emerald-500 animate-ping"></div>
+                   <div className="text-[8px] font-mono text-indigo-400/60 uppercase tracking-widest">System Status: Optimal</div>
+                 </div>
+                 <div className="text-[8px] font-mono text-indigo-400/60 uppercase tracking-widest">Data Sync: 100%</div>
+                 <div className="text-[8px] font-mono text-indigo-400/60 uppercase tracking-widest">Encryption: AES-256</div>
+               </div>
+
+               <iframe 
+                 title="YouTube Dashboard" 
+                 className="w-full h-full border-0 relative z-0 grayscale-[0.1] group-hover:grayscale-0 transition-all duration-1000 scale-[1.01]"
+                 src="https://app.powerbi.com/view?r=eyJrIjoiZWM3YWNjOGItZmUwNC00MDE0LTgzMTctNWVlMzZiNTRkMzM5IiwidCI6IjA3OTQ2ZjZmLTg1NzEtNGUyMi1iY2I0LTcxOTgwMWNkYjM4NiIsImMiOjF9" 
+                 allowFullScreen={true}
+               ></iframe>
+               
+               {/* Inner Bezel Effect */}
+               <div className="absolute inset-0 border-[12px] border-orbit-900/40 pointer-events-none z-20 rounded-[2rem]"></div>
+               
+               {/* Bottom Fade */}
+               <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-orbit-900 via-orbit-900/80 to-transparent pointer-events-none z-30"></div>
+            </div>
+          </motion.div>
+
+          {/* Scroll Indicator */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 1 }}
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/20 pointer-events-none"
+          >
+            <span className="text-[10px] uppercase tracking-[0.3em]">Explore Network</span>
+            <motion.div 
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-px h-12 bg-gradient-to-b from-white/20 to-transparent"
+            />
           </motion.div>
         </div>
       </section>
 
-      {/* Core Value Pillars */}
-      <section id="features" className="py-24 relative z-10 bg-orbit-800/30">
+      {/* Core Value Pillars - Bento Grid Style */}
+      <section id="features" className="py-24 relative z-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Top Creators Choose OrbitX MCN</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">We provide the infrastructure so you can focus on the content.</p>
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-6xl font-display uppercase mb-4">Why Top Creators Choose OrbitX MCN</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">We don't just manage channels; we build sustainable media businesses for the world's most ambitious creators.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <FeatureCard 
-              icon={Briefcase} 
-              title="Brand Deals" 
-              desc="Multi-Channel Networks (MCNs) have dedicated sales teams that connect you directly with advertisers for sponsorships and promotional campaigns." 
-              color="text-indigo-400" 
-              gradient="from-indigo-500/20 to-blue-500/5" 
-            />
-            <FeatureCard 
-              icon={Shield} 
-              title="Content ID & Protection" 
-              desc="Advanced tools to manage copyright claims and protect your original videos from being reuploaded or misused by others." 
-              color="text-red-400" 
-              gradient="from-red-500/20 to-orange-500/5" 
-              onClick={() => onLogin && onLogin(TabView.CONTENT_ID)}
-            />
-            <FeatureCard 
-              icon={Music} 
-              title="Production Resources" 
-              desc="Access to professional studios, high-end video equipment, and royalty-free music & sound effect libraries (e.g., Epidemic Sound)." 
-              color="text-yellow-400" 
-              gradient="from-yellow-500/20 to-orange-500/5" 
-            />
-            <FeatureCard 
-              icon={Users} 
-              title="Cross-Promotion" 
-              desc="Opportunities to collaborate with other creators within the same network, helping grow audiences across channels." 
-              color="text-purple-400" 
-              gradient="from-purple-500/20 to-indigo-500/5" 
-            />
-            <FeatureCard 
-              icon={DollarSign} 
-              title="Monetization Support" 
-              desc="Assistance with complex tax forms, resolving payment issues, and optimizing ad revenue performance." 
-              color="text-green-400" 
-              gradient="from-green-500/20 to-emerald-500/5" 
-            />
-            <FeatureCard 
-              icon={BarChart3} 
-              title="Channel Management" 
-              desc="Expert guidance on SEO, thumbnail optimization, and audience retention strategies to grow your channel effectively." 
-              color="text-blue-400" 
-              gradient="from-blue-500/20 to-cyan-500/5" 
-            />
-            <FeatureCard 
-              icon={TrendingUp} 
-              title="Increased Earnings" 
-              desc="Higher income potential through premium ads and direct brand deals compared to the standard YouTube Partner Program." 
-              color="text-orange-400" 
-              gradient="from-orange-500/20 to-red-500/5" 
-            />
-            <FeatureCard 
-              icon={Zap} 
-              title="Fast Payout" 
-              desc="Flexible monthly payments without waiting for AdSense thresholds, including options like mobile financial services (MFS) or local bank transfers." 
-              color="text-cyan-400" 
-              gradient="from-cyan-500/20 to-blue-500/5" 
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Large Feature */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="md:col-span-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col justify-between group overflow-hidden relative"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full -mr-20 -mt-20 group-hover:bg-indigo-500/20 transition-colors"></div>
+              <div>
+                <div className="w-14 h-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Zap size={28} />
+                </div>
+                <h3 className="text-3xl font-bold mb-4">Instant Growth Acceleration</h3>
+                <p className="text-gray-400 max-w-md">Access proprietary algorithms and cross-promotion networks that have helped our partners gain over 500M+ subscribers combined.</p>
+              </div>
+              <div className="mt-12 flex items-center gap-4">
+                <div className="flex -space-x-3">
+                  {[1,2,3,4].map(i => (
+                    <img key={i} src={`https://i.pravatar.cc/100?u=${i}`} className="w-10 h-10 rounded-full border-2 border-orbit-900" alt="Creator" />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-500 font-medium">+2,400 Creators Joined</span>
+              </div>
+            </motion.div>
+
+            {/* Small Feature */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-xl border border-white/10 rounded-3xl p-8 group"
+            >
+              <div className="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:rotate-12 transition-transform">
+                <Wallet size={28} />
+              </div>
+              <h3 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-200 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">Monthly Payouts</h3>
+              <p className="text-gray-400">Stop waiting 60 days for your revenue. We offer reliable monthly payouts via Bank, PayPal, or Crypto.</p>
+            </motion.div>
+
+            {/* Small Feature */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 group"
+            >
+              <div className="w-14 h-14 bg-cyan-500/20 rounded-2xl flex items-center justify-center text-cyan-400 mb-6 group-hover:scale-110 transition-transform">
+                <Shield size={28} />
+              </div>
+              <h3 className="text-2xl font-bold mb-4">Copyright Shield</h3>
+              <p className="text-gray-400">Manual Content ID management and legal support to protect your intellectual property globally.</p>
+            </motion.div>
+
+            {/* Large Feature */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="md:col-span-2 bg-orbit-800/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 group"
+            >
+              <div className="flex-1">
+                <div className="w-14 h-14 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 mb-6">
+                  <BarChart3 size={28} />
+                </div>
+                <h3 className="text-3xl font-bold mb-4">Advanced Analytics</h3>
+                <p className="text-gray-400">Deep-dive into your audience data with our custom CMS. Track performance, revenue, and trends across all platforms in one place.</p>
+              </div>
+              <div className="w-full md:w-64 h-48 bg-black/40 rounded-2xl border border-white/5 p-4 relative overflow-hidden">
+                <div className="flex items-end gap-1 h-full">
+                  {[40, 70, 45, 90, 65, 80, 50, 100, 85].map((h, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ height: 0 }}
+                      whileInView={{ height: `${h}%` }}
+                      className="flex-1 bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-sm"
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Creator Marquee */}
+      <section className="py-20 overflow-hidden border-y border-white/5 bg-black/20">
+        <div className="flex whitespace-nowrap animate-marquee">
+          {[1,2,3,4,5,6,1,2,3,4,5,6].map((i, idx) => (
+            <div key={idx} className="flex items-center gap-4 px-12">
+              <img src={`https://i.pravatar.cc/100?u=creator${i}`} className="w-12 h-12 rounded-full grayscale hover:grayscale-0 transition-all" alt="Creator" />
+              <span className="text-2xl font-display uppercase opacity-20 hover:opacity-100 transition-opacity cursor-default">Creator {i}</span>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -333,6 +538,74 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 relative z-10 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-6xl font-display uppercase mb-4">Transparent Membership</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">One simple fee to unlock the full power of the OrbitX MCN network.</p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              transition={{ duration: 0.6, type: "spring", bounce: 0.4 }}
+              className="relative bg-orbit-800 border-2 border-indigo-500/30 rounded-[2.5rem] p-10 md:p-16 overflow-hidden group shadow-[0_0_50px_-12px_rgba(99,102,241,0.3)] hover:shadow-[0_0_80px_-12px_rgba(99,102,241,0.5)]"
+            >
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full -mr-32 -mt-32 group-hover:bg-indigo-500/20 transition-colors"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 blur-2xl rounded-full -ml-16 -mb-16"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+                <div className="text-center md:text-left flex-1">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-400 mb-6 uppercase tracking-wider">Lifetime Access</div>
+                  <h3 className="text-5xl md:text-7xl font-display mb-4">$50</h3>
+                  <p className="text-2xl font-bold text-white mb-6">One-Time Join Fee</p>
+                  <p className="text-gray-400 leading-relaxed mb-8">
+                    Join the OrbitX MCN creator network with a simple one-time fee of $50 and unlock access to exclusive creator benefits.
+                  </p>
+                  <motion.a 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-8 py-4 bg-white text-orbit-900 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-all shadow-xl shadow-white/10"
+                  >
+                    Get Started Now
+                    <ArrowRight size={20} />
+                  </motion.a>
+                </div>
+                
+                <div className="w-full md:w-72 space-y-4">
+                  {[
+                    "Brand Partnerships",
+                    "Content Protection",
+                    "Creator Collaboration",
+                    "Professional Growth Support",
+                    "Global Channel Scaling"
+                  ].map((benefit, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <Check size={14} />
+                      </div>
+                      <span className="text-sm font-medium text-gray-300">{benefit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+            
+            <p className="text-center text-gray-500 text-sm mt-8">
+              Members gain opportunities for brand partnerships, content protection, collaboration with other creators, and professional growth support to scale their channels globally.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Support & FAQ Section */}
       <section id="support" className="py-24 relative z-10 bg-orbit-800/20">
         <div className="max-w-7xl mx-auto px-6">
@@ -347,9 +620,27 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                             <div key={idx} className="border border-orbit-700 bg-orbit-800/40 rounded-xl overflow-hidden">
                                 <button onClick={() => setActiveFaq(activeFaq === idx ? null : idx)} className="w-full flex items-center justify-between p-5 text-left hover:bg-orbit-800/60 transition-colors">
                                     <span className="font-medium text-lg text-gray-200">{faq.q}</span>
-                                    {activeFaq === idx ? <ChevronUp className="text-indigo-400" /> : <ChevronDown className="text-gray-500" />}
+                                    <motion.div
+                                        animate={{ rotate: activeFaq === idx ? 180 : 0 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <ChevronDown className={activeFaq === idx ? "text-indigo-400" : "text-gray-500"} />
+                                    </motion.div>
                                 </button>
-                                {activeFaq === idx && <div className="p-5 pt-0 text-gray-400 leading-relaxed border-t border-orbit-700/50 mt-2">{faq.a}</div>}
+                                <AnimatePresence>
+                                    {activeFaq === idx && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                                        >
+                                            <div className="p-5 pt-0 text-gray-400 leading-relaxed border-t border-orbit-700/50 mt-2">
+                                                {faq.a}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         ))}
                     </div>
@@ -408,14 +699,14 @@ const FeatureCard = ({ icon: Icon, title, desc, color, gradient, onClick }: { ic
     viewport={{ once: true }}
     whileHover={{ y: -8, scale: 1.02 }}
     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-    className={`p-8 rounded-3xl bg-orbit-800/50 border border-white/5 hover:bg-orbit-800 transition-all group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+    className={`p-8 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 hover:border-white/20 transition-all group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
     onClick={onClick}
   >
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
     <div className="relative z-10">
       <motion.div 
         whileHover={{ rotate: 15, scale: 1.1 }}
-        className="w-14 h-14 rounded-2xl bg-orbit-900 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+        className="w-14 h-14 rounded-2xl bg-orbit-900/80 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
       >
         <Icon className={`w-7 h-7 ${color}`} />
       </motion.div>

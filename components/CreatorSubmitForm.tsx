@@ -84,39 +84,126 @@ const CreatorSubmitForm: React.FC = () => {
     <div className="bg-orbit-800 border border-orbit-700 rounded-3xl p-8 shadow-xl">
       <h2 className="text-3xl font-bold mb-6 text-white">Creator Application Form</h2>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <input name="full_name" value={formData.full_name} onChange={handleChange} placeholder="Full Name" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-          <input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="Email" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-          <input name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-          <input name="country" value={formData.country} onChange={handleChange} placeholder="Country" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-          <input name="whatsapp" value={formData.whatsapp} onChange={handleChange} placeholder="WhatsApp" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" />
-          <input name="youtube_channel_name" value={formData.youtube_channel_name} onChange={handleChange} placeholder="YouTube Channel Name" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-          <input name="youtube_channel_url" value={formData.youtube_channel_url} onChange={handleChange} placeholder="YouTube Channel URL" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" required />
-          <input name="channel_category" value={formData.channel_category} onChange={handleChange} placeholder="Channel Category" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" />
-          <input name="total_subscribers" type="number" value={formData.total_subscribers} onChange={handleChange} placeholder="Total Subscribers" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" />
-          <input name="total_views" type="number" value={formData.total_views} onChange={handleChange} placeholder="Total Views" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" />
-          <input name="monthly_views" type="number" value={formData.monthly_views} onChange={handleChange} placeholder="Monthly Views" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" />
-          <input name="total_videos" type="number" value={formData.total_videos} onChange={handleChange} placeholder="Total Videos" className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" />
-          <select name="monetized" value={formData.monetized} onChange={handleChange} className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors">
-            <option value="Yes">Monetized: Yes</option>
-            <option value="No">Monetized: No</option>
-          </select>
-          <select name="current_mcn" value={formData.current_mcn} onChange={handleChange} className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors">
-            <option value="Yes">Current MCN: Yes</option>
-            <option value="No">Current MCN: No</option>
-          </select>
-        </div>
-        <textarea name="additional_info" value={formData.additional_info} onChange={handleChange} placeholder="Additional Info" className="w-full h-32 bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors resize-none" />
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.05
+              }
+            }
+          }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-5"
+        >
+          {[
+            { name: 'full_name', placeholder: 'Full Name', type: 'text', required: true },
+            { name: 'email', placeholder: 'Email', type: 'email', required: true },
+            { name: 'phone', placeholder: 'Phone', type: 'text', required: true },
+            { name: 'country', placeholder: 'Country', type: 'text', required: true },
+            { name: 'whatsapp', placeholder: 'WhatsApp', type: 'text' },
+            { name: 'youtube_channel_name', placeholder: 'YouTube Channel Name', type: 'text', required: true },
+            { name: 'youtube_channel_url', placeholder: 'YouTube Channel URL', type: 'text', required: true },
+            { name: 'channel_category', placeholder: 'Channel Category', type: 'text' },
+            { name: 'total_subscribers', placeholder: 'Total Subscribers', type: 'number' },
+            { name: 'total_views', placeholder: 'Total Views', type: 'number' },
+            { name: 'monthly_views', placeholder: 'Monthly Views', type: 'number' },
+            { name: 'total_videos', placeholder: 'Total Videos', type: 'number' },
+          ].map((field) => (
+            <motion.div
+              key={field.name}
+              variants={{
+                hidden: { opacity: 0, x: -10 },
+                visible: { opacity: 1, x: 0 }
+              }}
+            >
+              <input 
+                name={field.name} 
+                type={field.type}
+                value={(formData as any)[field.name]} 
+                onChange={handleChange} 
+                placeholder={field.placeholder} 
+                className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors" 
+                required={field.required} 
+              />
+            </motion.div>
+          ))}
+          
+          <motion.div variants={{ hidden: { opacity: 0, x: -10 }, visible: { opacity: 1, x: 0 } }}>
+            <select name="monetized" value={formData.monetized} onChange={handleChange} className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors">
+              <option value="Yes">Monetized: Yes</option>
+              <option value="No">Monetized: No</option>
+            </select>
+          </motion.div>
+          
+          <motion.div variants={{ hidden: { opacity: 0, x: -10 }, visible: { opacity: 1, x: 0 } }}>
+            <select name="current_mcn" value={formData.current_mcn} onChange={handleChange} className="w-full bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors">
+              <option value="Yes">Current MCN: Yes</option>
+              <option value="No">Current MCN: No</option>
+            </select>
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <textarea name="additional_info" value={formData.additional_info} onChange={handleChange} placeholder="Additional Info" className="w-full h-32 bg-orbit-900 border border-orbit-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition-colors resize-none" />
+        </motion.div>
         <motion.button 
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          layout
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ 
+            opacity: 1, 
+            y: 0,
+            scale: formStatus === 'idle' ? [1, 1.01, 1] : 1
+          }}
+          transition={{
+            scale: {
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }
+          }}
+          whileHover={{ 
+            scale: 1.03, 
+            boxShadow: "0 0 25px rgba(79, 70, 229, 0.5)",
+            backgroundColor: formStatus === 'success' ? "#22c55e" : "#6366f1"
+          }}
+          whileTap={{ scale: 0.97 }}
           type="submit" 
           disabled={formStatus === 'sending' || formStatus === 'success'} 
-          className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${formStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+          className={`relative w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 overflow-hidden ${formStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600'}`}
         >
-          {formStatus === 'idle' && <><span>Submit Application</span><Send size={18} /></>}
-          {formStatus === 'sending' && <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span><span>Submitting...</span></>}
-          {formStatus === 'success' && <><CheckCircle size={18} /><span>Application Submitted!</span></>}
+          {/* Shimmer Effect */}
+          {formStatus === 'idle' && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+              initial={{ x: '-100%' }}
+              animate={{ x: '200%' }}
+              transition={{
+                repeat: Infinity,
+                duration: 2.5,
+                ease: "linear",
+                repeatDelay: 0.5
+              }}
+            />
+          )}
+
+          <motion.div
+            key={formStatus}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            className="relative z-10 flex items-center justify-center gap-2"
+          >
+            {formStatus === 'idle' && <><span>Submit Application</span><Send size={18} /></>}
+            {formStatus === 'sending' && <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span><span>Submitting...</span></>}
+            {formStatus === 'success' && <><CheckCircle size={18} /><span>Application Submitted!</span></>}
+          </motion.div>
         </motion.button>
       </form>
     </div>

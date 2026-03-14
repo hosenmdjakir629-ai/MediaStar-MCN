@@ -14,7 +14,7 @@
     "express": "^5.2.1",
     "firebase": "^12.10.0",
     "html2canvas": "1.4.1",
-    "jspdf": "2.5.1",
+    "jspdf": "4.2.0",
     "lucide-react": "^0.563.0",
     "motion": "^12.35.0",
     "nodemailer": "^8.0.1",

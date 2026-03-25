@@ -101,8 +101,8 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               rel="noreferrer"
               className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all shadow-lg shadow-white/10 flex items-center gap-2"
             >
-              <span className="hidden xs:block">Apply Now</span>
-              <span className="xs:hidden">Apply</span>
+              <span className="hidden xs:block">Book Free Consultation</span>
+              <span className="xs:hidden">Book</span>
               <ArrowRight size={16} />
             </motion.a>
             <button 
@@ -131,7 +131,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                 rel="noreferrer" 
                 className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center"
               >
-                Apply Now
+                Book Free Consultation
               </motion.a>
             </div>
           </div>
@@ -200,7 +200,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               rel="noreferrer" 
               className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 group"
             >
-              <span>Apply Now</span>
+              <span>Book Free Consultation</span>
               <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </motion.a>
           </motion.div>

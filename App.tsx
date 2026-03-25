@@ -1,23 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
-import DashboardView from './components/DashboardView';
-import CreatorsView from './components/CreatorsView';
-import AnalyticsView from './components/AnalyticsView';
-import SettingsView from './components/SettingsView';
-import AIStrategist from './components/AIStrategist';
-import IntegrationsView from './components/IntegrationsView';
-import SupportView from './components/SupportView';
-import OnboardingModal from './components/OnboardingModal';
-import PlaceholderView from './components/PlaceholderView';
-import PayoutsView from './components/PayoutsView';
-import SystemLogsView from './components/SystemLogsView';
-import LoginView from './components/LoginView';
-import HomePage from './components/HomePage';
-import CreatorDashboardView from './components/CreatorDashboardView';
-import EarningsView from './components/EarningsView';
-import ContentIDView from './components/ContentIDView';
-import AIChatbot from './components/AIChatbot';
 import { TabView, AnalyticsData, Creator, EarningsRecord, PayoutRequest } from './types';
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
 import { auth, db, logOut, handleFirestoreError, OperationType } from './src/firebase';
@@ -25,6 +8,24 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
 
 import { motion, AnimatePresence } from 'motion/react';
+
+const DashboardView = lazy(() => import('./components/DashboardView'));
+const CreatorsView = lazy(() => import('./components/CreatorsView'));
+const AnalyticsView = lazy(() => import('./components/AnalyticsView'));
+const SettingsView = lazy(() => import('./components/SettingsView'));
+const AIStrategist = lazy(() => import('./components/AIStrategist'));
+const IntegrationsView = lazy(() => import('./components/IntegrationsView'));
+const SupportView = lazy(() => import('./components/SupportView'));
+const OnboardingModal = lazy(() => import('./components/OnboardingModal'));
+const PlaceholderView = lazy(() => import('./components/PlaceholderView'));
+const PayoutsView = lazy(() => import('./components/PayoutsView'));
+const SystemLogsView = lazy(() => import('./components/SystemLogsView'));
+const LoginView = lazy(() => import('./components/LoginView'));
+const HomePage = lazy(() => import('./components/HomePage'));
+const CreatorDashboardView = lazy(() => import('./components/CreatorDashboardView'));
+const EarningsView = lazy(() => import('./components/EarningsView'));
+const ContentIDView = lazy(() => import('./components/ContentIDView'));
+const AIChatbot = lazy(() => import('./components/AIChatbot'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -411,15 +412,23 @@ const App: React.FC = () => {
   const renderMainContent = () => {
     if (!isAuthenticated) {
       if (showLogin) {
-        return <LoginView onLogin={handleLogin} onBack={() => setShowLogin(false)} />;
+        return (
+          <Suspense fallback={<div className="min-h-screen bg-orbit-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+            <LoginView onLogin={handleLogin} onBack={() => setShowLogin(false)} />
+          </Suspense>
+        );
       }
-      return <HomePage 
-        onLoginClick={() => setShowLogin(true)} 
-        onLogin={(tab) => {
-          if (tab) setPendingTab(tab);
-          setShowLogin(true);
-        }} 
-      />;
+      return (
+        <Suspense fallback={<div className="min-h-screen bg-orbit-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+          <HomePage 
+            onLoginClick={() => setShowLogin(true)} 
+            onLogin={(tab) => {
+              if (tab) setPendingTab(tab);
+              setShowLogin(true);
+            }} 
+          />
+        </Suspense>
+      );
     }
 
     return (
@@ -516,7 +525,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="w-10 h-10 rounded-full orbit-gradient p-[2px] relative group cursor-pointer shadow-lg shadow-orbit-500/20">
                      <div className="w-full h-full bg-surface-950 rounded-full overflow-hidden">
-                        <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                        <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" loading="lazy" decoding="async" />
                      </div>
                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full backdrop-blur-[1px] opacity-0 hover:opacity-100 transition-opacity" onClick={handleLogout}>
                            <LogOut size={16} className="text-white" />
@@ -535,7 +544,14 @@ const App: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {renderContent()}
+                  <Suspense fallback={
+                    <div className="flex flex-col items-center justify-center h-[40vh] space-y-4">
+                      <div className="w-10 h-10 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-gray-500 text-sm">Loading view...</p>
+                    </div>
+                  }>
+                    {renderContent()}
+                  </Suspense>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -552,7 +568,9 @@ const App: React.FC = () => {
     <>
       {renderMainContent()}
       {/* Global AI Chatbot */}
-      <AIChatbot creators={creators} analytics={analytics} />
+      <Suspense fallback={null}>
+        <AIChatbot creators={creators} analytics={analytics} />
+      </Suspense>
     </>
   );
 };

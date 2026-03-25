@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import CreatorSubmitForm from './CreatorSubmitForm';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
+const CreatorSubmitForm = lazy(() => import('./CreatorSubmitForm'));
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -96,7 +96,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             <motion.a 
               whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.9)" }}
               whileTap={{ scale: 0.95 }}
-              href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment"
+              href="https://wa.me/8801927694437"
               target="_blank"
               rel="noreferrer"
               className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all shadow-lg shadow-white/10 flex items-center gap-2"
@@ -126,9 +126,9 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               <motion.a 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" 
-                target="_blank" 
-                rel="noreferrer" 
+                href="https://wa.me/8801927694437"
+                target="_blank"
+                rel="noreferrer"
                 className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center"
               >
                 Book Free Consultation
@@ -195,9 +195,9 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                 stiffness: 400,
                 damping: 10
               }}
-              href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment" 
-              target="_blank" 
-              rel="noreferrer" 
+              href="https://wa.me/8801927694437"
+              target="_blank"
+              rel="noreferrer"
               className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 group"
             >
               <span>Book Free Consultation</span>
@@ -247,7 +247,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               <div className="mt-12 flex items-center gap-4">
                 <div className="flex -space-x-3">
                   {[1,2,3,4].map(i => (
-                    <img key={i} src={`https://i.pravatar.cc/100?u=${i}`} className="w-10 h-10 rounded-full border-2 border-orbit-900" alt="Creator" />
+                    <img key={i} src={`https://i.pravatar.cc/100?u=${i}`} className="w-10 h-10 rounded-full border-2 border-orbit-900" alt="Creator" loading="lazy" decoding="async" />
                   ))}
                 </div>
                 <span className="text-sm text-gray-500 font-medium">+2,400 Creators Joined</span>
@@ -312,7 +312,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
         <div className="flex whitespace-nowrap animate-marquee">
           {[1,2,3,4,5,6,1,2,3,4,5,6].map((i, idx) => (
             <div key={idx} className="flex items-center gap-4 px-12">
-              <img src={`https://i.pravatar.cc/100?u=creator${i}`} className="w-12 h-12 rounded-full grayscale hover:grayscale-0 transition-all" alt="Creator" />
+              <img src={`https://i.pravatar.cc/100?u=creator${i}`} className="w-12 h-12 rounded-full grayscale hover:grayscale-0 transition-all" alt="Creator" loading="lazy" decoding="async" />
               <span className="text-2xl font-display uppercase opacity-20 hover:opacity-100 transition-opacity cursor-default">Creator {i}</span>
             </div>
           ))}
@@ -442,7 +442,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                <div className="w-full md:w-1/2 relative">
                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/30 to-purple-500/30 rounded-3xl blur-3xl opacity-50"></div>
                    <div className="relative bg-orbit-800 border border-orbit-700 rounded-3xl p-2 shadow-2xl">
-                       <img src="https://images.unsplash.com/photo-1551033406-61bc49d7816e?q=80&w=2000&auto=format&fit=crop" alt="Advanced Tools" className="rounded-2xl w-full" />
+                       <img src="https://images.unsplash.com/photo-1551033406-61bc49d7816e?q=80&w=2000&auto=format&fit=crop" alt="Advanced Tools" className="rounded-2xl w-full" loading="lazy" decoding="async" />
                        <div className="absolute -bottom-6 -left-6 bg-orbit-800 border border-orbit-600 p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce-slow">
                            <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><CheckCircle size={20} /></div>
                            <div>
@@ -586,7 +586,9 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                             Chat
                           </motion.a>
                     </div>
-                    <CreatorSubmitForm />
+                    <Suspense fallback={<div className="h-40 flex items-center justify-center text-gray-500">Loading form...</div>}>
+                        <CreatorSubmitForm />
+                    </Suspense>
                 </div>
             </div>
         </div>

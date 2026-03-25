@@ -14,11 +14,11 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon: Icon, color }) => {
   const getColorClass = (c: string) => {
       switch(c) {
-          case 'indigo': return 'text-indigo-400 bg-indigo-500/10 group-hover:border-indigo-500/30';
-          case 'cyan': return 'text-cyan-400 bg-cyan-500/10 group-hover:border-cyan-500/30';
-          case 'green': return 'text-green-400 bg-green-500/10 group-hover:border-green-500/30';
-          case 'purple': return 'text-purple-400 bg-purple-500/10 group-hover:border-purple-500/30';
-          default: return 'text-blue-400 bg-blue-500/10 group-hover:border-blue-500/30';
+          case 'indigo': return 'text-violet-400 bg-violet-500/10 border-violet-500/20';
+          case 'cyan': return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
+          case 'green': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+          case 'purple': return 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20';
+          default: return 'text-orbit-400 bg-orbit-500/10 border-orbit-500/20';
       }
   };
   
@@ -28,30 +28,35 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon: 
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, scale: 1.02 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className={`bg-orbit-800/40 backdrop-blur-md rounded-2xl p-5 border border-white/5 hover:bg-orbit-800/60 transition-all duration-300 relative overflow-hidden group shadow-xl ${colorClass.split(' ').pop()}`}
+      whileHover={{ y: -5, scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className="glass-card rounded-3xl p-6 relative overflow-hidden group"
     >
-      {/* Ambient Glow */}
-      <div className={`absolute -right-6 -top-6 w-32 h-32 rounded-full opacity-0 group-hover:opacity-10 blur-2xl transition-opacity duration-500 bg-${color}-500`}></div>
+      {/* Subtle Gradient Background */}
+      <div className={`absolute inset-0 bg-gradient-to-br from-transparent to-white/[0.02] pointer-events-none`}></div>
       
-      <div className="flex justify-between items-start mb-3 relative z-10">
+      <div className="flex justify-between items-start mb-6 relative z-10">
         <motion.div 
-          whileHover={{ rotate: 15, scale: 1.1 }}
-          className={`p-2.5 rounded-xl ${colorClass.split(' ').slice(0, 2).join(' ')}`}
+          whileHover={{ rotate: 8, scale: 1.1 }}
+          className={`p-3 rounded-2xl ${colorClass.split(' ').slice(0, 2).join(' ')} border ${colorClass.split(' ').pop()}`}
         >
-          <Icon size={20} />
+          <Icon size={22} />
         </motion.div>
-        <div className={`flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg ${trend === 'up' ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
-          {trend === 'up' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+        <div className={`flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${trend === 'up' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`}>
+          {trend === 'up' ? <ArrowUpRight size={12} strokeWidth={3} /> : <ArrowDownRight size={12} strokeWidth={3} />}
           <span>{change}</span>
         </div>
       </div>
       
       <div className="relative z-10">
-          <h3 className="text-gray-400 text-xs font-medium mb-1">{title}</h3>
-          <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+          <h3 className="text-surface-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">{title}</h3>
+          <div className="flex items-baseline space-x-2">
+            <p className="text-3xl font-black text-white font-display tracking-tight">{value}</p>
+          </div>
       </div>
+
+      {/* Decorative Line */}
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
     </motion.div>
   );
 };

@@ -12,17 +12,17 @@ import OnboardingModal from './components/OnboardingModal';
 import PlaceholderView from './components/PlaceholderView';
 import PayoutsView from './components/PayoutsView';
 import SystemLogsView from './components/SystemLogsView';
-import AdminView from './components/AdminView';
 import LoginView from './components/LoginView';
 import HomePage from './components/HomePage';
 import CreatorDashboardView from './components/CreatorDashboardView';
 import EarningsView from './components/EarningsView';
 import ContentIDView from './components/ContentIDView';
+import AIChatbot from './components/AIChatbot';
 import { TabView, AnalyticsData, Creator, EarningsRecord, PayoutRequest } from './types';
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
 import { auth, db, logOut, handleFirestoreError, OperationType } from './src/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
 
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -42,14 +42,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleUncaughtError = (event: ErrorEvent) => {
-      if (event.error instanceof Error && (event.error.name === 'AbortError' || event.error.message.toLowerCase().includes('aborted'))) {
-        console.warn("Uncaught request aborted:", event.error.message);
+      const err = event.error;
+      if (err && (err.name === 'AbortError' || err.message?.toLowerCase().includes('aborted') || err.message?.includes('The user aborted a request'))) {
+        console.debug("Uncaught request aborted:", err.message);
         event.preventDefault();
       }
     };
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (event.reason instanceof Error && (event.reason.name === 'AbortError' || event.reason.message.toLowerCase().includes('aborted'))) {
-        console.warn("Unhandled promise rejection (aborted):", event.reason.message);
+      const reason = event.reason;
+      if (reason && (reason.name === 'AbortError' || reason.message?.toLowerCase().includes('aborted') || reason.message?.includes('The user aborted a request'))) {
+        console.debug("Unhandled promise rejection (aborted):", reason.message);
         event.preventDefault();
       }
     };
@@ -62,19 +64,39 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const testConnection = async () => {
+      try {
+        console.log("Testing Firestore connection...");
+        await getDocFromServer(doc(db, 'test', 'connection'));
+        console.log("Firestore connection test successful.");
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Firestore connection failed: the client is offline. Please check your Firebase configuration.");
+        }
+        // Other errors are expected if the document doesn't exist, which is fine for a connection test.
+      }
+    };
+    testConnection();
+  }, []);
+
+  useEffect(() => {
+    console.log("Auth state listener starting...");
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log("Auth state changed. User:", user?.uid, "Email:", user?.email);
       if (user) {
         setIsAdmin(user.email === 'hosenmdjakir629@gmail.com');
         try {
           const userRef = doc(db, 'users', user.uid);
+          console.log("Fetching user document:", userRef.path);
           const userSnap = await getDoc(userRef);
           
           if (!userSnap.exists()) {
-            // Create user document if it doesn't exist
+            console.log("User document does not exist. Creating...");
             const userData: any = {
               uid: user.uid,
               email: user.email,
-              role: user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'creator'
+              role: user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'creator',
+              createdAt: new Date().toISOString()
             };
             if (user.displayName) userData.name = user.displayName;
             if (user.photoURL) userData.photoURL = user.photoURL;
@@ -84,19 +106,25 @@ const App: React.FC = () => {
             if (userData.role === 'creator') {
               setCurrentTab(TabView.CREATOR_DASHBOARD);
             }
+            console.log("User document created.");
           } else {
-            const role = userSnap.data().role as 'admin' | 'viewer' | 'creator';
+            const data = userSnap.data();
+            console.log("User document exists:", data);
+            const role = data.role as 'admin' | 'viewer' | 'creator';
             setUserRole(role);
             if (role === 'creator' && currentTab === TabView.DASHBOARD) {
               setCurrentTab(TabView.CREATOR_DASHBOARD);
             }
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+          console.error("Error in auth state listener:", error);
+          // Don't re-throw here to avoid crashing the app, but log it.
+          // handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
         }
       }
       setIsAuthenticated(!!user);
       setIsAuthReady(true);
+      console.log("Auth ready. Authenticated:", !!user);
     });
     return () => unsubscribe();
   }, []);
@@ -191,9 +219,9 @@ const App: React.FC = () => {
         setShowOnboarding(false);
         setCurrentTab(TabView.DASHBOARD);
         setPendingTab(null);
-      } catch (error) {
-        if (error instanceof Error && error.message.toLowerCase().includes('aborted')) {
-          console.warn("Logout aborted.");
+      } catch (error: any) {
+        if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+          console.debug("Logout aborted.");
         } else {
           console.error("Logout failed", error);
         }
@@ -323,8 +351,6 @@ const App: React.FC = () => {
       case TabView.SUPPORT: return <SupportView />;
       case TabView.SYSTEM_LOGS:
         return <SystemLogsView />;
-      case TabView.ADMIN_PANEL:
-        return userRole === 'admin' ? <AdminView /> : <div className="p-8 text-red-400">Access Denied</div>;
       case TabView.REPORTS:
         return <PlaceholderView title="Performance Reports" />;
       case TabView.MARKETPLACE:
@@ -382,9 +408,10 @@ const App: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  const renderMainContent = () => {
+    if (!isAuthenticated) {
       if (showLogin) {
-          return <LoginView onLogin={handleLogin} onBack={() => setShowLogin(false)} />;
+        return <LoginView onLogin={handleLogin} onBack={() => setShowLogin(false)} />;
       }
       return <HomePage 
         onLoginClick={() => setShowLogin(true)} 
@@ -393,131 +420,140 @@ const App: React.FC = () => {
           setShowLogin(true);
         }} 
       />;
-  }
+    }
+
+    return (
+      <HashRouter>
+        <div className="min-h-screen bg-surface-950 text-white font-sans selection:bg-orbit-500 selection:text-white flex animate-fade-in relative overflow-hidden">
+          
+          {/* Ambient Background - World Class Glows */}
+          <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+              <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-orbit-600/15 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow"></div>
+              <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-violet-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow" style={{animationDelay: '2s'}}></div>
+              <div className="absolute top-[40%] left-[40%] w-[40vw] h-[40vw] bg-fuchsia-600/5 rounded-full blur-[100px] mix-blend-screen"></div>
+          </div>
+
+          {isSidebarOpen && (
+            <Sidebar 
+              currentTab={currentTab} 
+              onTabChange={(tab) => {
+                setCurrentTab(tab);
+                if (window.innerWidth <= 1024) setIsSidebarOpen(false);
+              }} 
+              onLogout={handleLogout} 
+              onClose={() => setIsSidebarOpen(false)}
+              userRole={userRole}
+            />
+          )}
+          
+          {/* Mobile Sidebar Overlay */}
+          {isSidebarOpen && window.innerWidth <= 1024 && (
+            <div 
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden" 
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+          
+          <main className={`flex-1 transition-all duration-500 ${isSidebarOpen && window.innerWidth > 1024 ? 'lg:ml-64' : 'ml-0'} relative z-10 overflow-auto custom-scrollbar`}>
+            {/* Header - Glassmorphism */}
+            <header className="h-20 bg-surface-950/40 backdrop-blur-xl border-b border-white/5 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                  className={`p-2 text-surface-400 hover:text-white bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all ${isSidebarOpen && window.innerWidth > 1024 ? 'hidden' : 'block'}`}
+                >
+                  <Menu size={20} />
+                </button>
+                 <h2 className="text-xl sm:text-2xl font-bold text-white capitalize tracking-tight drop-shadow-sm truncate max-w-[150px] sm:max-w-none font-display">
+                  {currentTab?.toLowerCase().replace('_', ' ') || 'Dashboard'}
+                </h2>
+              </div>
+              
+              <div className="flex items-center space-x-6">
+                <div className="relative hidden md:block group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-500 group-focus-within:text-orbit-400 transition-colors" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="Global search..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-black/20 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-surface-300 focus:outline-none focus:border-orbit-500 focus:bg-black/40 transition-all w-64 backdrop-blur-sm font-display" 
+                  />
+                </div>
+                
+                <button className="relative p-2 text-surface-400 hover:text-white hover:bg-white/10 rounded-full transition-all border border-transparent hover:border-white/5">
+                  <Bell size={20} />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-orbit-500 rounded-full border-2 border-surface-950 shadow-lg shadow-orbit-500/50"></span>
+                </button>
+                
+                {isAdmin && (
+                  <div className="flex items-center bg-black/20 rounded-lg p-1 border border-white/10 backdrop-blur-md">
+                    <button 
+                      onClick={() => {
+                        setUserRole('admin');
+                        setCurrentTab(TabView.DASHBOARD);
+                      }}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${userRole === 'admin' ? 'bg-orbit-500 text-white shadow-lg shadow-orbit-500/20' : 'text-surface-400 hover:text-white'}`}
+                    >
+                      Admin
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setUserRole('creator');
+                        setCurrentTab(TabView.CREATOR_DASHBOARD);
+                      }}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${userRole === 'creator' ? 'bg-orbit-500 text-white shadow-lg shadow-orbit-500/20' : 'text-surface-400 hover:text-white'}`}
+                    >
+                      Creator
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-3 pl-6 border-l border-white/10">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-bold text-white font-display">{auth.currentUser?.displayName || 'Network Admin'}</p>
+                    <p className="text-[10px] text-surface-500 font-bold uppercase tracking-widest">MediaStar MCN HQ</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full orbit-gradient p-[2px] relative group cursor-pointer shadow-lg shadow-orbit-500/20">
+                     <div className="w-full h-full bg-surface-950 rounded-full overflow-hidden">
+                        <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                     </div>
+                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full backdrop-blur-[1px] opacity-0 hover:opacity-100 transition-opacity" onClick={handleLogout}>
+                           <LogOut size={16} className="text-white" />
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <div className="p-4 sm:p-8">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentTab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {renderContent()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </main>
+          
+          {/* Onboarding Modal Overlay */}
+          {showOnboarding && <OnboardingModal onComplete={handleCompleteOnboarding} />}
+        </div>
+      </HashRouter>
+    );
+  };
 
   return (
-    <HashRouter>
-      <div className="min-h-screen bg-orbit-900 text-white font-sans selection:bg-orbit-500 selection:text-white flex animate-fade-in relative overflow-hidden">
-        
-        {/* Ambient Background - World Class Glows */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow"></div>
-            <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-cyan-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow" style={{animationDelay: '2s'}}></div>
-            <div className="absolute top-[40%] left-[40%] w-[30vw] h-[30vw] bg-purple-600/5 rounded-full blur-[100px] mix-blend-screen"></div>
-        </div>
-
-        {isSidebarOpen && (
-          <Sidebar 
-            currentTab={currentTab} 
-            onTabChange={(tab) => {
-              setCurrentTab(tab);
-              if (window.innerWidth <= 1024) setIsSidebarOpen(false);
-            }} 
-            onLogout={handleLogout} 
-            onClose={() => setIsSidebarOpen(false)}
-            userRole={userRole}
-          />
-        )}
-        
-        {/* Mobile Sidebar Overlay */}
-        {isSidebarOpen && window.innerWidth <= 1024 && (
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden" 
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-        
-        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen && window.innerWidth > 1024 ? 'lg:ml-64' : 'ml-0'} relative z-10 overflow-auto`}>
-          {/* Header - Glassmorphism */}
-          <header className="h-20 bg-orbit-900/60 backdrop-blur-xl border-b border-white/5 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                className={`p-2 text-gray-400 hover:text-white bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-colors ${isSidebarOpen && window.innerWidth > 1024 ? 'hidden' : 'block'}`}
-              >
-                <Menu size={20} />
-              </button>
-               <h2 className="text-xl sm:text-2xl font-bold text-white capitalize tracking-tight drop-shadow-sm truncate max-w-[150px] sm:max-w-none">
-                {currentTab?.toLowerCase().replace('_', ' ') || 'Dashboard'}
-              </h2>
-            </div>
-            
-            <div className="flex items-center space-x-6">
-              <div className="relative hidden md:block group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-orbit-500 transition-colors" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Global search..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-orbit-500 focus:bg-black/40 transition-all w-64 backdrop-blur-sm" 
-                />
-              </div>
-              
-              <button className="relative p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors border border-transparent hover:border-white/5">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-orbit-900 shadow-lg shadow-red-500/50"></span>
-              </button>
-              
-              {isAdmin && (
-                <div className="flex items-center bg-black/20 rounded-lg p-1 border border-white/10">
-                  <button 
-                    onClick={() => {
-                      setUserRole('admin');
-                      setCurrentTab(TabView.DASHBOARD);
-                    }}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${userRole === 'admin' ? 'bg-orbit-500 text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Admin
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setUserRole('creator');
-                      setCurrentTab(TabView.CREATOR_DASHBOARD);
-                    }}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${userRole === 'creator' ? 'bg-orbit-500 text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Creator
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-3 pl-6 border-l border-white/10">
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-white">{auth.currentUser?.displayName || 'Network Admin'}</p>
-                  <p className="text-xs text-gray-500">MediaStar MCN HQ</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-cyan-500 p-[2px] relative group cursor-pointer shadow-lg shadow-indigo-500/20">
-                   <div className="w-full h-full bg-orbit-900 rounded-full overflow-hidden">
-                      <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                   </div>
-                   <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center rounded-full backdrop-blur-[1px]" onClick={handleLogout}>
-                         <LogOut size={16} className="text-white" />
-                   </div>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <div className="p-4 sm:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {renderContent()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </main>
-        
-        {/* Onboarding Modal Overlay */}
-        {showOnboarding && <OnboardingModal onComplete={handleCompleteOnboarding} />}
-      </div>
-    </HashRouter>
+    <>
+      {renderMainContent()}
+      {/* Global AI Chatbot */}
+      <AIChatbot creators={creators} analytics={analytics} />
+    </>
   );
 };
 

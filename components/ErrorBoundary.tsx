@@ -16,15 +16,15 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   static getDerivedStateFromError(error: Error): State {
-    if (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted')) {
+    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
       return { hasError: false, error: null };
     }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted')) {
-      console.warn('ErrorBoundary: Caught aborted request, ignoring:', error);
+    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+      console.debug('ErrorBoundary: Caught aborted request, ignoring:', error);
       return;
     }
     console.error('Uncaught error:', error, errorInfo);

@@ -42,8 +42,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
         setServerStatus('offline');
       }
     } catch (error) {
-      if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
-        console.warn("SettingsView: Health check aborted.");
+      if (error instanceof Error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+        console.debug("SettingsView: Health check aborted.");
         return;
       }
       setServerStatus('offline');

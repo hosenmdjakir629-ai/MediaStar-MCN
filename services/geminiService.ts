@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai/web";
 import { AIStrategyResponse } from "../types";
 
 // Using the provided API Key from environment or fallback
@@ -62,9 +62,9 @@ export const generateContentStrategy = async (
     if (!text) return null;
     return JSON.parse(text) as AIStrategyResponse;
 
-  } catch (error) {
-    if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
-      console.warn("OrbitX MCN: Gemini request aborted. Returning mock strategy.");
+  } catch (error: any) {
+    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+      console.debug("OrbitX MCN: Gemini request aborted. Returning mock strategy.");
     } else {
       console.warn("OrbitX MCN: Gemini API error or missing key. Returning mock strategy.", error);
     }

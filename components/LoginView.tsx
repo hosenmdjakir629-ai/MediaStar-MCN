@@ -29,17 +29,17 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-orbit-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-orbit-500/10 rounded-full blur-[100px]"></div>
-        <div className="absolute top-[40%] right-[10%] w-[30%] h-[30%] bg-orbit-accent/10 rounded-full blur-[100px]"></div>
+        <div className="absolute top-[40%] right-[10%] w-[30%] h-[30%] bg-violet-500/10 rounded-full blur-[100px]"></div>
       </div>
       
       {/* Back Button */}
       <button 
         onClick={onBack}
-        className="absolute top-4 right-4 sm:top-8 sm:left-8 z-20 flex items-center space-x-2 text-gray-400 hover:text-white transition-colors bg-orbit-800/50 hover:bg-orbit-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl backdrop-blur-md border border-white/5"
+        className="absolute top-4 right-4 sm:top-8 sm:left-8 z-20 flex items-center space-x-2 text-gray-400 hover:text-white transition-colors bg-surface-800/50 hover:bg-surface-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl backdrop-blur-md border border-white/5"
       >
         <ChevronLeft size={16} className="sm:w-[18px] sm:h-[18px]" />
         <span className="text-xs sm:text-sm font-medium">Back</span>
@@ -48,7 +48,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
       <div className="w-full max-w-md relative z-10 animate-fade-in-up mt-12 sm:mt-0">
         {/* Logo Section */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-orbit-500 to-orbit-accent shadow-lg shadow-orbit-500/30 mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-orbit-500 to-violet-600 shadow-lg shadow-orbit-500/30 mb-4">
             <Rocket className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
@@ -63,7 +63,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
         </div>
 
         {/* Login Card */}
-        <div className="bg-orbit-800 border border-orbit-700 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl bg-opacity-95 mx-2 sm:mx-0">
+        <div className="bg-surface-900 border border-white/5 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl bg-opacity-95 mx-2 sm:mx-0">
           <div className="space-y-6">
             
             {/* Error Message */}

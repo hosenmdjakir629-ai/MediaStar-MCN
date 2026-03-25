@@ -48,7 +48,7 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
     if (!response.ok) {
       if (response.status === 500 || response.status === 504) {
         // 500: Missing key, 504: Timeout/Abort on server
-        console.warn(`OrbitX MCN: Backend API ${response.status}. Falling back to mock.`);
+        console.debug(`OrbitX MCN: Backend API ${response.status}. Falling back to mock.`);
         return getMockData();
       }
       throw new Error(`Backend API error: ${response.statusText}`);
@@ -63,9 +63,9 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
       thumbnails: item.snippet.thumbnails,
       statistics: item.statistics
     };
-  } catch (error) {
-    if (error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted'))) {
-      console.warn("OrbitX MCN: YouTube fetch was aborted. Returning mock data.");
+  } catch (error: any) {
+    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+      console.debug("OrbitX MCN: YouTube fetch was aborted. Returning mock data.");
       return getMockData();
     }
     console.error("OrbitX MCN: Error fetching YouTube data from backend, falling back to mock.", error);

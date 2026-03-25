@@ -24,9 +24,9 @@ const AIStrategist: React.FC<AIStrategistProps> = ({ creators = [] }) => {
     try {
       const result = await generateContentStrategy(inputs.niche, inputs.topic, inputs.channel);
       setStrategy(result);
-    } catch (err) {
-      if (err instanceof Error && (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'))) {
-        console.warn("AIStrategist: Strategy generation aborted.");
+    } catch (err: any) {
+      if (err && (err.name === 'AbortError' || err.message?.toLowerCase().includes('aborted') || err.message?.includes('The user aborted a request'))) {
+        console.debug("AIStrategist: Strategy generation aborted.");
       } else {
         console.error("AIStrategist error:", err);
       }

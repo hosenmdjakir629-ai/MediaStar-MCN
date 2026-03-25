@@ -27,7 +27,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
     { id: TabView.INTEGRATIONS, label: 'Integrations', icon: Blocks },
     { id: TabView.SUPPORT, label: 'Support Center', icon: Headphones },
     { id: TabView.SYSTEM_LOGS, label: 'System Logs', icon: Terminal },
-    { id: TabView.ADMIN_PANEL, label: 'Admin Panel', icon: ShieldCheck },
     { id: TabView.SETTINGS, label: 'Settings', icon: Settings },
     { id: TabView.ONBOARDING, label: 'Onboarding', icon: UserCheck },
     { id: TabView.CALENDAR, label: 'Content Calendar', icon: Calendar },
@@ -57,9 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
   const navItems = userRole === 'creator' ? creatorNavItems : adminNavItems;
 
   const handleLogoutClick = () => {
-    if (confirm('Are you sure you want to logout?')) {
-        onLogout(); 
-    }
+    onLogout(); 
   };
 
   return (
@@ -67,72 +64,72 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
       initial={{ x: -280 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-      className="w-64 bg-orbit-900/90 backdrop-blur-xl h-screen flex flex-col border-r border-orbit-700/50 fixed left-0 top-0 z-30 shadow-2xl"
+      className="w-64 glass-panel h-screen flex flex-col fixed left-0 top-0 z-30 shadow-2xl"
     >
-      <div className="p-6 flex items-center justify-between border-b border-orbit-700/50">
-        <div className="flex items-center space-x-3">
-          <motion.div 
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 0.8 }}
-            className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20"
-          >
-            <Rocket className="text-white w-5 h-5" />
-          </motion.div>
-          <div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">
-              <span className="font-bold">OrbitX</span>
-              <span className="text-[10px] text-gray-500 block font-medium">Powered by MediaStar</span>
-            </h1>
-          </div>
+      <div className="p-8 flex flex-col items-center border-b border-white/5 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-b from-orbit-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+        
+        <motion.div 
+          whileHover={{ rotate: 360, scale: 1.1 }}
+          transition={{ duration: 1.2, ease: "anticipate" }}
+          className="w-16 h-16 orbit-gradient rounded-2xl flex items-center justify-center shadow-2xl shadow-orbit-500/40 mb-4 relative z-10"
+        >
+          <Rocket className="text-white w-8 h-8" />
+        </motion.div>
+        
+        <div className="text-center relative z-10">
+          <h1 className="text-2xl font-black orbit-text-gradient font-display tracking-tighter">
+            OrbitX
+          </h1>
+          <p className="text-[9px] text-surface-500 font-black tracking-[0.3em] uppercase mt-1">
+            MediaStar MCN
+          </p>
         </div>
-        <button onClick={onClose} className="lg:hidden p-2 text-gray-400 hover:text-white">
+        
+        <button onClick={onClose} className="lg:hidden absolute top-4 right-4 p-2 text-surface-400 hover:text-white transition-colors">
           <X size={20} />
         </button>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 p-6 space-y-2 overflow-y-auto custom-scrollbar">
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
           return (
             <motion.button
               key={item.id}
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.03 }}
+              transition={{ delay: index * 0.01 }}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+              className={`w-full flex items-center space-x-4 px-5 py-3 rounded-2xl transition-all duration-500 group relative overflow-hidden ${
                 isActive
-                  ? 'text-white shadow-lg shadow-orbit-500/20'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'text-white'
+                  : 'text-surface-500 hover:text-white hover:bg-white/5'
               }`}
             >
               {isActive && (
                 <motion.div 
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-gradient-to-r from-orbit-500 to-indigo-600 opacity-100" 
+                  className="absolute inset-0 orbit-gradient shadow-xl shadow-orbit-500/20" 
                 />
               )}
-              <Icon size={18} className={`relative z-10 transition-colors ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
-              <span className="font-medium text-sm relative z-10">{item.label}</span>
-              {isActive && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white/40 rounded-l-full blur-[1px]" 
-                />
-              )}
+              <Icon size={18} className={`relative z-10 transition-all duration-500 ${isActive ? 'text-white scale-110' : 'text-surface-600 group-hover:text-white group-hover:scale-110'}`} />
+              <span className={`text-xs font-black relative z-10 font-display uppercase tracking-widest transition-all duration-500 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+                {item.label}
+              </span>
             </motion.button>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-orbit-700/50 bg-black/10">
+      <div className="p-6 border-t border-white/5 bg-black/10">
         <button 
           onClick={handleLogoutClick}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors group"
+          className="w-full flex items-center justify-center space-x-3 px-5 py-4 rounded-2xl text-surface-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all duration-500 group border border-transparent hover:border-rose-500/20"
         >
-          <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Logout</span>
+          <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-xs font-black font-display uppercase tracking-widest">Logout</span>
         </button>
       </div>
     </motion.div>

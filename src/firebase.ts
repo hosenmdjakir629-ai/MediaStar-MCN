@@ -3,8 +3,11 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
+console.log("Firebase config:", firebaseConfig);
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+console.log("Firestore initialized with database ID:", firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export enum OperationType {
@@ -36,8 +39,8 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  if (error instanceof Error && error.message.toLowerCase().includes('aborted')) {
-    console.warn(`Firestore operation aborted: ${operationType} on ${path}`);
+  if (error instanceof Error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+    console.debug(`Firestore operation aborted: ${operationType} on ${path}`);
     return;
   }
   
@@ -69,8 +72,8 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (error: any) {
-    if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user' || error.message?.toLowerCase().includes('aborted')) {
-      console.warn("Sign in aborted by user.");
+    if (error && (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user' || error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+      console.debug("Sign in aborted by user.");
       return null;
     }
     console.error("Error signing in with Google", error);
@@ -95,8 +98,8 @@ export const logOut = async () => {
   try {
     await signOut(auth);
   } catch (error: any) {
-    if (error.message?.toLowerCase().includes('aborted')) {
-      console.warn("Sign out aborted.");
+    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+      console.debug("Sign out aborted.");
       return;
     }
     console.error("Error signing out", error);

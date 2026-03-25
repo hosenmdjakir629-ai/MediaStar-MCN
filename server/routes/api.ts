@@ -74,7 +74,7 @@ router.get('/youtube/channel/:handle', async (req, res) => {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
       // Step 1: Search for channel ID
@@ -124,8 +124,8 @@ router.get('/youtube/channel/:handle', async (req, res) => {
       clearTimeout(timeoutId);
     }
   } catch (error: any) {
-    if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-      console.warn('YouTube Proxy: Fetch aborted or timed out');
+    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
+      console.debug('YouTube Proxy: Fetch aborted or timed out');
       return res.status(504).json({ error: 'Upstream request timed out' });
     }
     console.error('YouTube Proxy Error:', error);

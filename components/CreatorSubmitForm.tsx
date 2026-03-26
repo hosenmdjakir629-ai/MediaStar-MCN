@@ -6,21 +6,13 @@ import { motion } from 'motion/react';
 
 const CreatorSubmitForm: React.FC = () => {
   const [formData, setFormData] = useState({
-    full_name: '',
+    name: '',
     email: '',
     phone: '',
-    country: '',
-    whatsapp: '',
-    youtube_channel_name: '',
-    youtube_channel_url: '',
-    channel_category: '',
-    total_subscribers: '',
-    total_views: '',
-    monthly_views: '',
-    total_videos: '',
-    monetized: 'Yes',
-    current_mcn: 'No',
-    additional_info: ''
+    channel: '',
+    subs: '',
+    niche: 'Gaming',
+    goal: ''
   });
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success'>('idle');
 
@@ -32,42 +24,64 @@ const CreatorSubmitForm: React.FC = () => {
     e.preventDefault();
     setFormStatus('sending');
     try {
+      // 1. Add to notifications for admin alert
       await addDoc(collection(db, 'notifications'), {
-        name: formData.full_name,
-        channelName: formData.youtube_channel_name,
-        subscribers: parseInt(formData.total_subscribers) || 0,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        channel: formData.channel,
+        subs: formData.subs,
+        channelName: formData.channel,
+        subscribers: parseInt(formData.subs) || 0,
+        niche: formData.niche,
+        goal: formData.goal,
         status: 'unread',
         timestamp: new Date().toISOString()
+      });
+
+      // 2. Add to creators collection with Pending status (PHP script logic)
+      await addDoc(collection(db, 'creators'), {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        channel: formData.channel,
+        subs: formData.subs,
+        channelName: formData.channel,
+        subscribers: parseInt(formData.subs) || 0,
+        niche: formData.niche,
+        goal: formData.goal,
+        status: 'Pending',
+        totalViews: 0,
+        revenue: 0,
+        trend: 'flat',
+        avatarUrl: `https://i.pravatar.cc/150?u=${formData.email}`,
+        isVerified: false,
+        lastSynced: new Date().toISOString()
       });
 
       await fetch('/api/send-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.full_name,
+          name: formData.name,
           email: formData.email,
-          channelName: formData.youtube_channel_name,
-          subscribers: formData.total_subscribers
+          phone: formData.phone,
+          channel: formData.channel,
+          subscribers: formData.subs,
+          niche: formData.niche,
+          goal: formData.goal
         })
       });
 
       setFormStatus('success');
       setFormData({
-        full_name: '',
+        name: '',
         email: '',
         phone: '',
-        country: '',
-        whatsapp: '',
-        youtube_channel_name: '',
-        youtube_channel_url: '',
-        channel_category: '',
-        total_subscribers: '',
-        total_views: '',
-        monthly_views: '',
-        total_videos: '',
-        monetized: 'Yes',
-        current_mcn: 'No',
-        additional_info: ''
+        channel: '',
+        subs: '',
+        niche: 'Gaming',
+        goal: ''
       });
       setTimeout(() => setFormStatus('idle'), 3000);
     } catch (error: any) {
@@ -107,18 +121,11 @@ const CreatorSubmitForm: React.FC = () => {
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
             {[
-              { name: 'full_name', placeholder: 'Full Name', type: 'text', required: true },
+              { name: 'name', placeholder: 'Full Name', type: 'text', required: true },
               { name: 'email', placeholder: 'Email Address', type: 'email', required: true },
-              { name: 'phone', placeholder: 'Phone Number', type: 'text', required: true },
-              { name: 'country', placeholder: 'Country', type: 'text', required: true },
-              { name: 'whatsapp', placeholder: 'WhatsApp Number', type: 'text' },
-              { name: 'youtube_channel_name', placeholder: 'Channel Name', type: 'text', required: true },
-              { name: 'youtube_channel_url', placeholder: 'Channel URL', type: 'text', required: true },
-              { name: 'channel_category', placeholder: 'Category', type: 'text' },
-              { name: 'total_subscribers', placeholder: 'Subscribers', type: 'number' },
-              { name: 'total_views', placeholder: 'Total Views', type: 'number' },
-              { name: 'monthly_views', placeholder: 'Monthly Views', type: 'number' },
-              { name: 'total_videos', placeholder: 'Total Videos', type: 'number' },
+              { name: 'phone', placeholder: 'WhatsApp Number', type: 'text', required: true },
+              { name: 'channel', placeholder: 'Channel Link', type: 'text', required: true },
+              { name: 'subs', placeholder: 'Subscribers', type: 'number' },
             ].map((field) => (
               <motion.div
                 key={field.name}
@@ -143,25 +150,15 @@ const CreatorSubmitForm: React.FC = () => {
             
             <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
               <select 
-                name="monetized" 
-                value={formData.monetized} 
+                name="niche" 
+                value={formData.niche} 
                 onChange={handleChange} 
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-orbit-500/50 focus:bg-white/10 transition-all font-bold tracking-tight appearance-none cursor-pointer"
               >
-                <option value="Yes">Monetized: Yes</option>
-                <option value="No">Monetized: No</option>
-              </select>
-            </motion.div>
-            
-            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-              <select 
-                name="current_mcn" 
-                value={formData.current_mcn} 
-                onChange={handleChange} 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-orbit-500/50 focus:bg-white/10 transition-all font-bold tracking-tight appearance-none cursor-pointer"
-              >
-                <option value="Yes">Current MCN: Yes</option>
-                <option value="No">Current MCN: No</option>
+                <option value="Gaming">Gaming</option>
+                <option value="Vlog">Vlog</option>
+                <option value="Islamic">Islamic</option>
+                <option value="Tech">Tech</option>
               </select>
             </motion.div>
           </motion.div>
@@ -172,10 +169,10 @@ const CreatorSubmitForm: React.FC = () => {
             transition={{ delay: 0.6 }}
           >
             <textarea 
-              name="additional_info" 
-              value={formData.additional_info} 
+              name="goal" 
+              value={formData.goal} 
               onChange={handleChange} 
-              placeholder="Tell us more about your channel goals..." 
+              placeholder="Your Goal" 
               className="w-full h-40 bg-white/5 border border-white/10 rounded-[2rem] px-6 py-5 text-white placeholder:text-surface-600 outline-none focus:border-orbit-500/50 focus:bg-white/10 transition-all font-bold tracking-tight resize-none" 
             />
           </motion.div>
@@ -219,7 +216,7 @@ const CreatorSubmitForm: React.FC = () => {
             >
               {formStatus === 'idle' && <><span>SUBMIT APPLICATION</span><Send size={20} /></>}
               {formStatus === 'sending' && <><span className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></span><span>PROCESSING...</span></>}
-              {formStatus === 'success' && <><CheckCircle size={22} /><span>APPLICATION SENT!</span></>}
+              {formStatus === 'success' && <><CheckCircle size={22} /><span>🎉 APPLICATION SUCCESSFUL!</span></>}
             </motion.div>
           </motion.button>
         </form>

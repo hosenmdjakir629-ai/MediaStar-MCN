@@ -19,14 +19,19 @@
       "type": "object",
       "properties": {
         "name": { "type": "string", "description": "Creator's full name." },
+        "email": { "type": "string", "format": "email", "description": "Creator's email address." },
+        "phone": { "type": "string", "description": "Creator's phone or WhatsApp number." },
+        "channel": { "type": "string", "description": "Link to the creator's channel." },
+        "subs": { "type": "string", "description": "Subscriber count as a string." },
         "channelName": { "type": "string", "description": "YouTube channel name." },
-        "subscribers": { "type": "number", "description": "Subscriber count." },
+        "subscribers": { "type": "number", "description": "Subscriber count as a number." },
         "totalViews": { "type": "number", "description": "Total views." },
         "videoCount": { "type": "number", "description": "Total number of videos." },
         "revenue": { "type": "number", "description": "Monthly revenue." },
         "niche": { "type": "string", "description": "Content niche." },
+        "goal": { "type": "string", "description": "Creator's goal or message." },
         "avatarUrl": { "type": "string", "format": "uri", "description": "Avatar image URL." },
-        "status": { "type": "string", "enum": ["Active", "Pending", "Suspended", "Inactive"], "description": "Creator status." },
+        "status": { "type": "string", "enum": ["Active", "Pending", "Suspended", "Inactive", "Processing"], "description": "Creator status." },
         "trend": { "type": "string", "enum": ["up", "down", "flat"], "description": "Performance trend." },
         "linkedChannelHandle": { "type": "string", "description": "YouTube handle (@handle)." },
         "youtubeChannelId": { "type": "string", "description": "YouTube Channel ID (UC...)." },
@@ -34,7 +39,7 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
         "createdBy": { "type": "string", "description": "UID of the user who added this creator." }
       },
-      "required": ["name", "channelName", "subscribers", "totalViews", "videoCount", "revenue", "niche", "status", "trend"]
+      "required": ["name", "status", "trend"]
     },
     "Log": {
       "title": "Log",
@@ -97,12 +102,18 @@
       "type": "object",
       "properties": {
         "name": { "type": "string", "description": "Creator name." },
+        "email": { "type": "string", "format": "email", "description": "Creator email." },
+        "phone": { "type": "string", "description": "Creator phone." },
+        "channel": { "type": "string", "description": "Channel link." },
+        "subs": { "type": "string", "description": "Subscriber count string." },
         "channelName": { "type": "string", "description": "Channel name." },
         "subscribers": { "type": "number", "description": "Subscriber count." },
+        "niche": { "type": "string", "description": "Content niche." },
+        "goal": { "type": "string", "description": "Creator goal." },
         "status": { "type": "string", "enum": ["unread", "read"], "description": "Notification status." },
         "timestamp": { "type": "string", "format": "date-time", "description": "Time of notification." }
       },
-      "required": ["name", "channelName", "subscribers", "status", "timestamp"]
+      "required": ["name", "status", "timestamp"]
     }
   },
   "firestore": {

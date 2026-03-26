@@ -16,6 +16,11 @@ export interface Creator {
   lastSynced?: string;
   monetizationStatus?: 'Enabled' | 'Disabled';
   uploadPolicy?: string;
+  email?: string;
+  phone?: string;
+  goal?: string;
+  channel?: string;
+  subs?: string;
 }
 
 export interface AnalyticsData {

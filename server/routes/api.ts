@@ -12,7 +12,7 @@ router.get('/health', (req, res) => {
 
 // Email confirmation endpoint
 router.post('/send-confirmation', async (req, res) => {
-  const { name, email, channelName, subscribers } = req.body;
+  const { name, email, phone, channel, subscribers, niche, goal } = req.body;
   
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     return res.status(500).json({ error: 'SMTP configuration missing' });
@@ -21,7 +21,7 @@ router.post('/send-confirmation', async (req, res) => {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
+    secure: false, // TLS
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -29,16 +29,26 @@ router.post('/send-confirmation', async (req, res) => {
   });
 
   try {
+    // 1. Send confirmation to the creator
     await transporter.sendMail({
-      from: '"OrbitX MCN" <noreply@orbitx.com>',
+      from: `"OrbitX MCN" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Your OrbitX MCN Application is Received ✅',
-      text: `Hi ${name},\n\nThank you for applying to join OrbitX MCN!\nWe have received your application and will review it shortly.\n\nYouTube Channel: ${channelName}\nSubscribers: ${subscribers}\n\nYou will get an update once your application is approved.\n\n– Team OrbitX MCN`,
+      text: `Hi ${name},\n\nThank you for applying to join OrbitX MCN!\nWe have received your application and will review it shortly.\n\nYouTube Channel: ${channel}\nSubscribers: ${subscribers}\n\nYou will get an update once your application is approved.\n\n– Team OrbitX MCN`,
     });
-    res.json({ message: 'Email sent' });
+
+    // 2. Send notification to the admin (as per PHPMailer request)
+    await transporter.sendMail({
+      from: `"OrbitX System" <${process.env.SMTP_USER}>`,
+      to: process.env.SMTP_USER, // Admin email
+      subject: '🚀 New Creator Application',
+      text: `New Application Details:\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nChannel: ${channel}\nSubscribers: ${subscribers}\nNiche: ${niche}\nGoal: ${goal}`,
+    });
+
+    res.json({ message: 'Emails sent successfully' });
   } catch (error) {
     console.error('Email error:', error);
-    res.status(500).json({ error: 'Failed to send email' });
+    res.status(500).json({ error: 'Failed to send emails' });
   }
 });
 

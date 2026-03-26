@@ -87,6 +87,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             <a href="#advanced-features" onClick={(e) => scrollToSection(e, 'advanced-features')} className="hover:text-white transition-colors cursor-pointer">Advanced</a>
             <a href="#tools" onClick={(e) => scrollToSection(e, 'tools')} className="hover:text-white transition-colors cursor-pointer">Tools</a>
             <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition-colors cursor-pointer">Pricing</a>
+            <a href="#apply" onClick={(e) => scrollToSection(e, 'apply')} className="hover:text-indigo-400 transition-colors cursor-pointer font-bold text-indigo-300">Apply Now</a>
             <a href="#support" onClick={(e) => scrollToSection(e, 'support')} className="hover:text-white transition-colors cursor-pointer">Support</a>
           </div>
 
@@ -123,6 +124,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
           <div className="md:hidden absolute top-full left-0 w-full bg-orbit-900/95 backdrop-blur-xl border-b border-white/10 py-8 px-6 space-y-6 animate-fade-in">
             <div className="flex flex-col space-y-6">
               <a href="#features" onClick={(e) => { scrollToSection(e, 'features'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Features</a>
+              <a href="#apply" onClick={(e) => { scrollToSection(e, 'apply'); setIsMobileMenuOpen(false); }} className="text-lg font-bold text-indigo-400 hover:text-indigo-300">Apply Now</a>
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
               <a href="#pricing" onClick={(e) => { scrollToSection(e, 'pricing'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Pricing</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
@@ -199,13 +201,23 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                 stiffness: 400,
                 damping: 10
               }}
+              href="#apply"
+              onClick={(e) => scrollToSection(e, 'apply')}
+              className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 group"
+            >
+              <span>Apply Now</span>
+              <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+            </motion.a>
+            <motion.a 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               href="https://wa.me/8801927694437"
               target="_blank"
               rel="noreferrer"
-              className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 group"
+              className="w-full sm:w-auto px-10 py-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl font-bold text-xl text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3"
             >
-              <span>Book Free Consultation</span>
-              <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+              <Phone size={20} className="text-green-400" />
+              <span>Free Consultation</span>
             </motion.a>
           </motion.div>
 
@@ -567,11 +579,11 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                         ))}
                     </div>
                 </div>
-                <div className="bg-orbit-800 border border-orbit-700 rounded-3xl p-8 shadow-xl">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400"><MessageSquare size={24} /></div>
-                        <h2 className="text-3xl font-bold">Get In Touch</h2>
-                    </div>
+                    <div id="apply" className="bg-orbit-800 border border-orbit-700 rounded-3xl p-8 shadow-xl">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400"><MessageSquare size={24} /></div>
+                            <h2 className="text-3xl font-bold">Get In Touch</h2>
+                        </div>
                     <div className="mb-8 p-5 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-2xl flex items-center gap-4 group hover:border-green-500/40 transition-colors cursor-default">
                         <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-green-500/20 group-hover:scale-110 transition-transform"><Phone size={24} /></div>
                         <div>

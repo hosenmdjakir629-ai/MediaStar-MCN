@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "start": "node server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
@@ -21,7 +22,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.13.0",
-    "recharts": "^3.7.0"
+    "recharts": "^2.13.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",

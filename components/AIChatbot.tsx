@@ -156,10 +156,10 @@ You can use this information to answer questions about the network's performance
         whileHover={{ scale: 1.1, rotate: 5 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-8 right-8 z-50 p-5 bg-orbit-600 text-white rounded-[2rem] shadow-2xl shadow-orbit-600/30 flex items-center justify-center group overflow-hidden ${isOpen ? 'hidden' : 'flex'}`}
+        className={`fixed bottom-8 right-8 z-50 p-5 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-[2rem] shadow-2xl shadow-purple-600/40 flex items-center justify-center group overflow-hidden ${isOpen ? 'hidden' : 'flex'}`}
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        <MessageSquare size={28} className="relative z-10" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <MessageSquare size={28} className="relative z-10 drop-shadow-lg" />
       </motion.button>
 
       {/* Chat Window */}
@@ -176,8 +176,9 @@ You can use this information to answer questions about the network's performance
             <div className="p-6 bg-white/5 border-b border-white/5 flex items-center justify-between relative overflow-hidden">
               <div className="absolute inset-0 bg-orbit-500/5 pointer-events-none"></div>
               <div className="flex items-center gap-4 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-orbit-500/10 flex items-center justify-center text-orbit-400 border border-orbit-500/20 shadow-inner">
-                  <Bot size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 flex items-center justify-center border border-white/10 shadow-inner relative group/icon">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-20 blur-md group-hover/icon:opacity-40 transition-opacity"></div>
+                  <Bot size={24} className="relative z-10 text-purple-300" />
                 </div>
                 <div>
                   <h3 className="font-black text-white text-base font-display tracking-tight">OrbitX AI</h3>
@@ -201,7 +202,11 @@ You can use this information to answer questions about the network's performance
                   key={msg.id} 
                   className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
                 >
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-surface-800 text-surface-300' : 'bg-orbit-500/10 text-orbit-400 border border-orbit-500/10'}`}>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
+                    msg.role === 'user' 
+                      ? 'bg-surface-800 text-surface-300' 
+                      : 'bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 text-purple-300 border border-white/5'
+                  }`}>
                     {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
                   </div>
                   <div 
@@ -217,13 +222,13 @@ You can use this information to answer questions about the network's performance
               ))}
               {isLoading && (
                 <div className="flex gap-4 flex-row animate-fade-in">
-                  <div className="w-10 h-10 rounded-2xl bg-orbit-500/10 flex items-center justify-center shrink-0 text-orbit-400 border border-orbit-500/10">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 flex items-center justify-center shrink-0 text-purple-300 border border-white/5">
                     <Bot size={20} />
                   </div>
                   <div className="px-6 py-4 rounded-[1.5rem] bg-white/5 border border-white/5 rounded-tl-none flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-orbit-500/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-orbit-500/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-orbit-500/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    <span className="w-2 h-2 bg-purple-500/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-purple-500/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 bg-purple-500/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                   </div>
                 </div>
               )}

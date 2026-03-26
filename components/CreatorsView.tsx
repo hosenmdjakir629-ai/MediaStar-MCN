@@ -360,6 +360,16 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                       <div>
                         <div className="flex items-center gap-2">
                           <div className="font-black text-white text-base group-hover:text-orbit-400 transition-colors font-display tracking-tight">{creator.channelName}</div>
+                          {creator.isVerified && <CheckCircle size={14} className="text-orbit-400" />}
+                          {isAdmin && (
+                            <button 
+                              onClick={(e) => handleToggleVerify(e, creator)}
+                              className={`ml-1 p-1 rounded-lg transition-all ${creator.isVerified ? 'text-orbit-400 hover:text-orbit-300' : 'text-surface-600 hover:text-surface-400'}`}
+                              title={creator.isVerified ? "Unverify Channel" : "Verify Channel"}
+                            >
+                              <ShieldCheck size={14} />
+                            </button>
+                          )}
                         </div>
                         <div className="text-[10px] text-surface-500 flex items-center gap-3 mt-1 font-black uppercase tracking-widest">
                           <span>{creator.name}</span>
@@ -394,13 +404,6 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                     <div className="flex items-center justify-end space-x-3">
                        {isAdmin && (
                          <>
-                           <button 
-                             onClick={(e) => handleToggleVerify(e, creator)} 
-                             className={`p-3 rounded-2xl transition-all duration-500 ${creator.isVerified ? 'text-orbit-400 bg-orbit-400/10 border border-orbit-400/20' : 'text-surface-500 bg-surface-900 border border-white/5 hover:text-orbit-400 hover:border-orbit-400/30'}`}
-                             title={creator.isVerified ? "Unverify Channel" : "Verify Channel"}
-                           >
-                              <ShieldCheck size={18} />
-                           </button>
                            <button 
                              onClick={(e) => handleSyncCreator(e, creator)} 
                              disabled={syncingId === creator.id}

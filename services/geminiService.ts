@@ -1,16 +1,20 @@
-
-import { GoogleGenAI, Type } from "@google/genai/web";
+import { GoogleGenAI, Type } from "@google/genai";
 import { AIStrategyResponse } from "../types";
-
-// Using the provided API Key from environment or fallback
-const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA3laj29mmMOi65O1E4HHR0eNYmBk0iDqk';
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export const generateContentStrategy = async (
   niche: string,
   recentTopic: string,
   channelName: string
 ): Promise<AIStrategyResponse | null> => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("GEMINI_API_KEY is not defined");
+    // Return mock data if key is missing to keep the app functional
+    return getMockStrategy(niche, recentTopic, channelName);
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   try {
     const prompt = `
       You are an expert YouTube content strategist for the OrbitX MCN Network.
@@ -26,11 +30,6 @@ export const generateContentStrategy = async (
       3. 10 high-traffic tags/keywords.
       4. 3 "Content Gaps" or underserved topics in this niche right now.
     `;
-
-    // Check if key is available to avoid instant crash (Validating length of provided key)
-    if (!API_KEY || API_KEY.length < 10) {
-       throw new Error("Missing API Key");
-    }
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -64,33 +63,33 @@ export const generateContentStrategy = async (
 
   } catch (error: any) {
     if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
-      console.debug("OrbitX MCN: Gemini request aborted. Returning mock strategy.");
+      console.debug("OrbitX MCN: Gemini request aborted.");
+      return null;
     } else {
-      console.warn("OrbitX MCN: Gemini API error or missing key. Returning mock strategy.", error);
+      console.warn("OrbitX MCN: Gemini API error. Returning mock strategy.", error);
+      return getMockStrategy(niche, recentTopic, channelName);
     }
-    
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Return Mock Data
-    return {
-      titleIdeas: [
-        `Why ${recentTopic} is Changing the Industry Forever`,
-        `I Tried ${recentTopic} for 7 Days (Shocking Results)`,
-        `The Ultimate Guide to ${niche} in 2024`,
-        `Stop Doing This With ${recentTopic}!`,
-        `${channelName} Special: The Truth About ${recentTopic}`
-      ],
-      descriptionOptimization: `To optimize for "${recentTopic}", ensure your first two lines explicitly state the value proposition. Include the phrase "${recentTopic}" naturally in the first sentence. Add timestamps for key moments (Intro, ${recentTopic} Explained, Final Verdict) to improve retention. Use bullet points for key takeaways.`,
-      tags: [
-        recentTopic, niche, "2024 trends", "tutorial", "review", 
-        "how to", "best tips", "viral", `${niche} guide`, "explained"
-      ],
-      contentGaps: [
-        `Advanced tutorials for ${recentTopic} that go beyond basics`,
-        `Budget-friendly alternatives in the ${niche} space`,
-        `Real-world case studies involving ${recentTopic}`
-      ]
-    };
   }
+};
+
+const getMockStrategy = (niche: string, recentTopic: string, channelName: string): AIStrategyResponse => {
+  return {
+    titleIdeas: [
+      `Why ${recentTopic} is Changing the Industry Forever`,
+      `I Tried ${recentTopic} for 7 Days (Shocking Results)`,
+      `The Ultimate Guide to ${niche} in 2024`,
+      `Stop Doing This With ${recentTopic}!`,
+      `${channelName} Special: The Truth About ${recentTopic}`
+    ],
+    descriptionOptimization: `To optimize for "${recentTopic}", ensure your first two lines explicitly state the value proposition. Include the phrase "${recentTopic}" naturally in the first sentence. Add timestamps for key moments (Intro, ${recentTopic} Explained, Final Verdict) to improve retention. Use bullet points for key takeaways.`,
+    tags: [
+      recentTopic, niche, "2024 trends", "tutorial", "review", 
+      "how to", "best tips", "viral", `${niche} guide`, "explained"
+    ],
+    contentGaps: [
+      `Advanced tutorials for ${recentTopic} that go beyond basics`,
+      `Budget-friendly alternatives in the ${niche} space`,
+      `Real-world case studies involving ${recentTopic}`
+    ]
+  };
 };

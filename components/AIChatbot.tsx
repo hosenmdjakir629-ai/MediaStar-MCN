@@ -1,11 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from '@google/genai/web';
+import { GoogleGenAI } from '@google/genai';
 import { Creator, AnalyticsData } from '../types';
-
-const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA3laj29mmMOi65O1E4HHR0eNYmBk0iDqk';
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 interface Message {
   id: string;
@@ -28,12 +25,12 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ creators = [], analytics = [] }) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<any>(null);
 
-  useEffect(() => {
+  const getSystemInstruction = () => {
     const totalCreators = creators.length;
     const totalViews = creators.reduce((acc, c) => acc + c.totalViews, 0);
     const totalSubscribers = creators.reduce((acc, c) => acc + c.subscribers, 0);
 
-    const systemInstruction = `You are a helpful AI assistant for OrbitX MCN, a YouTube Multi-Channel Network. 
+    return `You are a helpful AI assistant for OrbitX MCN, a YouTube Multi-Channel Network. 
 You help creators with YouTube strategy, content ideas, SEO, and platform questions. Keep your answers concise, professional, and encouraging.
 
 Here is specific information about joining OrbitX MCN:
@@ -58,14 +55,40 @@ Here is the current state of the MCN:
 - Total Network Views: ${totalViews.toLocaleString()}
 - Total Network Subscribers: ${totalSubscribers.toLocaleString()}
 You can use this information to answer questions about the network's performance.`;
+  };
 
-    if (!chatRef.current) {
-      chatRef.current = ai.chats.create({
-        model: "gemini-3-flash-preview",
-        config: {
-          systemInstruction,
-        },
-      });
+  const initChat = () => {
+    if (chatRef.current) return chatRef.current;
+    
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is not defined");
+      return null;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    chatRef.current = ai.chats.create({
+      model: "gemini-3-flash-preview",
+      config: {
+        systemInstruction: getSystemInstruction(),
+      },
+    });
+    return chatRef.current;
+  };
+
+  useEffect(() => {
+    // Re-initialize or update system instruction if creators/analytics change
+    if (chatRef.current) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        const ai = new GoogleGenAI({ apiKey });
+        chatRef.current = ai.chats.create({
+          model: "gemini-3-flash-preview",
+          config: {
+            systemInstruction: getSystemInstruction(),
+          },
+        });
+      }
     }
   }, [creators, analytics]);
 
@@ -86,46 +109,12 @@ You can use this information to answer questions about the network's performance
     setIsLoading(true);
 
     try {
-      if (!chatRef.current) {
-        const totalCreators = creators.length;
-        const totalViews = creators.reduce((acc, c) => acc + c.totalViews, 0);
-        const totalSubscribers = creators.reduce((acc, c) => acc + c.subscribers, 0);
-
-        const systemInstruction = `You are a helpful AI assistant for OrbitX MCN, a YouTube Multi-Channel Network. 
-        You help creators with YouTube strategy, content ideas, SEO, and platform questions. Keep your answers concise, professional, and encouraging.
-
-        Here is specific information about joining OrbitX MCN:
-        - Creator Join Fee: $20 (One-time payment)
-        - Join Requirements: 
-          • 1,000+ subscribers
-          • Original content
-          • No active copyright strikes
-          • Monetized YouTube channel 🚀
-        - Join Benefits:
-          • Brand deals & sponsorship opportunities
-          • Content ID & copyright protection
-          • Premium production resources (music, SFX, tools)
-          • Creator collaboration & cross-promotion
-          • Monetization & payment support
-          • YouTube growth strategies & SEO guidance
-          • Higher earning potential
-          • Fast and easy payment system
-
-        Here is the current state of the MCN:
-        - Total Creators: ${totalCreators}
-        - Total Network Views: ${totalViews.toLocaleString()}
-        - Total Network Subscribers: ${totalSubscribers.toLocaleString()}
-        You can use this information to answer questions about the network's performance.`;
-
-        chatRef.current = ai.chats.create({
-          model: "gemini-3-flash-preview",
-          config: {
-            systemInstruction,
-          },
-        });
+      const chat = initChat();
+      if (!chat) {
+        throw new Error("Could not initialize chat");
       }
 
-      const response = await chatRef.current.sendMessage({ message: userMessage.content });
+      const response = await chat.sendMessage({ message: userMessage.content });
       
       const modelMessage: Message = {
         id: (Date.now() + 1).toString(),

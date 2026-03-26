@@ -10,6 +10,7 @@ export interface Creator {
   avatarUrl: string;
   status: 'Active' | 'Pending' | 'Suspended' | 'Processing';
   trend: 'up' | 'down' | 'flat';
+  subscriberHistory?: number[];
   linkedChannelHandle?: string;
   youtubeChannelId?: string;
   isVerified?: boolean;

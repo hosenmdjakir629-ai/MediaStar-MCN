@@ -2,46 +2,63 @@ import React from 'react';
 import { Eye, DollarSign, TrendingUp, Users, Video, MessageCircle, Briefcase, Calendar, CheckCircle, Clock, ArrowUpRight, BarChart3 } from 'lucide-react';
 import StatCard from './StatCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { Creator, AnalyticsData, EarningsRecord, PayoutRequest } from '../types';
 
-const performanceData = [
-  { date: 'Jan', views: 4000, subs: 1200, revenue: 2400 },
-  { date: 'Feb', views: 3000, subs: 1500, revenue: 1398 },
-  { date: 'Mar', views: 5000, subs: 2100, revenue: 9800 },
-  { date: 'Apr', views: 2780, subs: 1800, revenue: 3908 },
-  { date: 'May', views: 6890, subs: 3200, revenue: 4800 },
-  { date: 'Jun', views: 8390, subs: 4500, revenue: 3800 },
-  { date: 'Jul', views: 12490, subs: 6800, revenue: 5300 },
-];
+interface CreatorDashboardViewProps {
+  creators: Creator[];
+  analytics: AnalyticsData[];
+  earnings: EarningsRecord[];
+  payouts: PayoutRequest[];
+}
 
-const earningsData = [
-  { month: 'Mar', amount: 1250 },
-  { month: 'Apr', amount: 1840 },
-  { month: 'May', amount: 2100 },
-  { month: 'Jun', amount: 1950 },
-  { month: 'Jul', amount: 2450 },
-];
+const CreatorDashboardView: React.FC<CreatorDashboardViewProps> = ({ creators, analytics, earnings, payouts }) => {
+  const creator = creators[0];
+  
+  // Use real data if available, otherwise fallback to mock for visual consistency if no data yet
+  const performanceData = analytics.length > 0 ? analytics : [
+    { date: 'Jan', views: 4000, subs: 1200, revenue: 2400 },
+    { date: 'Feb', views: 3000, subs: 1500, revenue: 1398 },
+    { date: 'Mar', views: 5000, subs: 2100, revenue: 9800 },
+    { date: 'Apr', views: 2780, subs: 1800, revenue: 3908 },
+    { date: 'May', views: 6890, subs: 3200, revenue: 4800 },
+    { date: 'Jun', views: 8390, subs: 4500, revenue: 3800 },
+    { date: 'Jul', views: 12490, subs: 6800, revenue: 5300 },
+  ];
 
-const brandDeals = [
-  { id: 1, brand: 'TechGear Pro', deal: 'Product Review', status: 'Active', amount: '$1,500', date: 'Aug 15' },
-  { id: 2, brand: 'SkillStream', deal: '30s Integration', status: 'Pending', amount: '$800', date: 'Sep 02' },
-  { id: 3, brand: 'GamerFuel', deal: 'Social Shoutout', status: 'Completed', amount: '$500', date: 'Jul 28' },
-];
+  const chartEarningsData = earnings.length > 0 
+    ? earnings.slice(-5).map(e => ({ month: e.month, amount: e.totalRevenue }))
+    : [
+      { month: 'Mar', amount: 1250 },
+      { month: 'Apr', amount: 1840 },
+      { month: 'May', amount: 2100 },
+      { month: 'Jun', amount: 1950 },
+      { month: 'Jul', amount: 2450 },
+    ];
 
-const CreatorDashboardView: React.FC = () => {
+  const totalPayouts = payouts
+    .filter(p => p.status === 'Paid')
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const brandDeals = [
+    { id: 1, brand: 'TechGear Pro', deal: 'Product Review', status: 'Active', amount: '$1,500', date: 'Aug 15' },
+    { id: 2, brand: 'SkillStream', deal: '30s Integration', status: 'Pending', amount: '$800', date: 'Sep 02' },
+    { id: 3, brand: 'GamerFuel', deal: 'Social Shoutout', status: 'Completed', amount: '$500', date: 'Jul 28' },
+  ];
+
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       {/* Header & Status */}
       <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Creator Portal</h2>
-          <p className="text-gray-400 text-sm mt-1">Welcome back! Here's your channel performance summary.</p>
+          <p className="text-gray-400 text-sm mt-1">Welcome back, {creator?.name || 'Creator'}! Here's your channel performance summary.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <CheckCircle size={20} className="text-emerald-500 shrink-0" />
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">MCN Status</span>
-              <span className="text-sm font-bold text-white">Active Member</span>
+              <span className="text-sm font-bold text-white">{creator?.status || 'Processing'} Member</span>
             </div>
           </div>
           <div className="flex items-center gap-2 px-4 py-3 bg-orbit-800 border border-orbit-700 rounded-xl">
@@ -56,9 +73,9 @@ const CreatorDashboardView: React.FC = () => {
 
       {/* Analytics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Views" value="1.2M" change="+15.3%" trend="up" icon={Eye} color="cyan" />
-        <StatCard title="Subscribers" value="45.2K" change="+5.2%" trend="up" icon={Users} color="indigo" />
-        <StatCard title="Est. Revenue" value="$4,250" change="+12.4%" trend="up" icon={DollarSign} color="green" />
+        <StatCard title="Total Views" value={creator?.totalViews?.toLocaleString() || "0"} change="+15.3%" trend="up" icon={Eye} color="cyan" />
+        <StatCard title="Subscribers" value={creator?.subscribers?.toLocaleString() || "0"} change="+5.2%" trend="up" icon={Users} color="indigo" />
+        <StatCard title="Est. Revenue" value={`$${creator?.revenue?.toLocaleString() || "0"}`} change="+12.4%" trend="up" icon={DollarSign} color="green" />
         <StatCard title="Watch Time" value="125.4K" change="+8.1%" trend="up" icon={Clock} color="purple" />
       </div>
 
@@ -86,7 +103,7 @@ const CreatorDashboardView: React.FC = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
                 <XAxis dataKey="date" stroke="#64748b" tickLine={false} axisLine={false} tick={{fontSize: 12}} dy={10} />
-                <YAxis stroke="#64748b" tickLine={false} axisLine={false} tickFormatter={(value) => `${value/1000}k`} tick={{fontSize: 12}} />
+                <YAxis stroke="#64748b" tickLine={false} axisLine={false} tickFormatter={(value) => value >= 1000 ? `${value/1000}k` : value} tick={{fontSize: 12}} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '1rem', color: '#f1f5f9', backdropFilter: 'blur(10px)' }}
                   itemStyle={{ color: '#22d3ee' }}
@@ -105,19 +122,19 @@ const CreatorDashboardView: React.FC = () => {
               <BarChart3 className="text-green-400" size={20} />
               Earnings
             </h3>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Last 5 Months</span>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Recent Activity</span>
           </div>
           <div className="h-64 w-full mb-6">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={earningsData}>
+              <BarChart data={chartEarningsData}>
                 <XAxis dataKey="month" stroke="#64748b" tickLine={false} axisLine={false} tick={{fontSize: 10}} />
                 <Tooltip 
                   cursor={{fill: 'rgba(255,255,255,0.05)'}}
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.75rem' }}
                 />
                 <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                  {earningsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === earningsData.length - 1 ? '#10b981' : '#334155'} />
+                  {chartEarningsData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={index === chartEarningsData.length - 1 ? '#10b981' : '#334155'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -131,7 +148,7 @@ const CreatorDashboardView: React.FC = () => {
                 </div>
                 <span className="text-sm font-medium text-gray-300">Total Payouts</span>
               </div>
-              <span className="text-lg font-bold text-white">$12,450</span>
+              <span className="text-lg font-bold text-white">${totalPayouts.toLocaleString()}</span>
             </div>
             <button className="w-full py-3 bg-orbit-500 hover:bg-orbit-400 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
               View Full Report <ArrowUpRight size={16} />

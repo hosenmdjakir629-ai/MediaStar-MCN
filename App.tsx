@@ -5,7 +5,8 @@ import { TabView, AnalyticsData, Creator, EarningsRecord, PayoutRequest } from '
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
 import { auth, db, logOut, handleFirestoreError, OperationType } from './src/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, getDocs, getDocFromServer, query, where } from 'firebase/firestore';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -138,7 +139,10 @@ const App: React.FC = () => {
 
     setIsLoadingData(true);
 
-    const unsubscribeCreators = onSnapshot(collection(db, 'creators'), (snapshot) => {
+    const creatorsRef = collection(db, 'creators');
+    const creatorsQuery = isAdmin ? creatorsRef : query(creatorsRef, where('uid', '==', auth.currentUser?.uid));
+
+    const unsubscribeCreators = onSnapshot(creatorsQuery, (snapshot) => {
       const creatorsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Creator));
       setCreators(creatorsData);
       setIsLoadingData(false);
@@ -147,21 +151,27 @@ const App: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'creators');
     });
 
-    const unsubscribeAnalytics = onSnapshot(collection(db, 'analytics'), (snapshot) => {
+    const analyticsRef = collection(db, 'analytics');
+    const unsubscribeAnalytics = onSnapshot(analyticsRef, (snapshot) => {
       const analyticsData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as AnalyticsData));
       setAnalytics(analyticsData);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'analytics');
+      // Analytics might be admin-only, handle gracefully
+      if (isAdmin) handleFirestoreError(error, OperationType.LIST, 'analytics');
     });
 
-    const unsubscribeEarnings = onSnapshot(collection(db, 'earnings'), (snapshot) => {
+    const earningsRef = collection(db, 'earnings');
+    const earningsQuery = isAdmin ? earningsRef : query(earningsRef, where('creatorId', '==', auth.currentUser?.uid));
+    const unsubscribeEarnings = onSnapshot(earningsQuery, (snapshot) => {
       const earningsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EarningsRecord));
       setEarnings(earningsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'earnings');
     });
 
-    const unsubscribePayouts = onSnapshot(collection(db, 'payouts'), (snapshot) => {
+    const payoutsRef = collection(db, 'payouts');
+    const payoutsQuery = isAdmin ? payoutsRef : query(payoutsRef, where('creatorId', '==', auth.currentUser?.uid));
+    const unsubscribePayouts = onSnapshot(payoutsQuery, (snapshot) => {
       const payoutsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PayoutRequest));
       setPayouts(payoutsData);
     }, (error) => {
@@ -383,7 +393,7 @@ const App: React.FC = () => {
       case TabView.RBAC:
         return <PlaceholderView title="Role-Based Access Control" />;
       case TabView.CREATOR_DASHBOARD:
-        return userRole === 'creator' ? <CreatorDashboardView /> : <div className="p-8 text-red-400">Access Denied</div>;
+        return userRole === 'creator' ? <CreatorDashboardView creators={creators} analytics={analytics} earnings={earnings} payouts={payouts} /> : <div className="p-8 text-red-400">Access Denied</div>;
       case TabView.CREATOR_ANALYTICS:
         return userRole === 'creator' ? <PlaceholderView title="Creator Analytics" /> : <div className="p-8 text-red-400">Access Denied</div>;
       case TabView.CREATOR_CONTENT:
@@ -565,13 +575,13 @@ const App: React.FC = () => {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       {renderMainContent()}
       {/* Global AI Chatbot */}
       <Suspense fallback={null}>
         <AIChatbot creators={creators} analytics={analytics} />
       </Suspense>
-    </>
+    </ErrorBoundary>
   );
 };
 

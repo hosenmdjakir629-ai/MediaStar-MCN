@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import * as React from 'react';
+import { ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -9,41 +10,53 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  state: State = {
-    hasError: false,
-    error: null
-  };
+class ErrorBoundary extends React.Component<any, any> {
+  constructor(props: any) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
-  static getDerivedStateFromError(error: Error): State {
-    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
-      return { hasError: false, error: null };
-    }
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
-      console.debug('ErrorBoundary: Caught aborted request, ignoring:', error);
-      return;
-    }
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  render() {
+  public render() {
     if (this.state.hasError) {
+      let errorMessage = 'An unexpected error occurred.';
+      
+      try {
+        // Check if it's a Firestore JSON error
+        const parsed = JSON.parse(this.state.error?.message || '');
+        if (parsed.error && parsed.operationType) {
+          errorMessage = `Firestore Error: ${parsed.error} during ${parsed.operationType} on ${parsed.path || 'unknown path'}.`;
+        }
+      } catch (e) {
+        // Not a JSON error, use the message directly if available
+        if (this.state.error?.message) {
+          errorMessage = this.state.error.message;
+        }
+      }
+
       return (
         <div className="min-h-screen bg-orbit-900 flex items-center justify-center p-4">
-          <div className="bg-orbit-800 border border-red-500/50 rounded-2xl p-8 max-w-lg w-full shadow-2xl">
-            <h2 className="text-2xl font-bold text-red-400 mb-4">Something went wrong</h2>
-            <div className="bg-black/50 p-4 rounded-xl overflow-auto max-h-64 mb-6">
-              <pre className="text-xs text-red-300 whitespace-pre-wrap">
-                {this.state.error?.message || 'Unknown error'}
-              </pre>
+          <div className="max-w-md w-full bg-orbit-800 border border-orbit-700 rounded-3xl p-8 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-red-500 text-2xl font-bold">!</span>
             </div>
+            <h2 className="text-2xl font-bold text-white mb-4">Something went wrong</h2>
+            <p className="text-gray-400 mb-8 text-sm leading-relaxed">
+              {errorMessage}
+            </p>
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-3 bg-red-500 hover:bg-red-400 text-white rounded-xl font-bold transition-colors"
+              className="w-full py-3 bg-orbit-500 hover:bg-orbit-400 text-white rounded-xl font-bold transition-all"
             >
               Reload Application
             </button>
@@ -52,7 +65,7 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return (this as any).props.children;
+    return this.props.children;
   }
 }
 

@@ -33,6 +33,7 @@
         "avatarUrl": { "type": "string", "format": "uri", "description": "Avatar image URL." },
         "status": { "type": "string", "enum": ["Active", "Pending", "Suspended", "Inactive", "Processing"], "description": "Creator status." },
         "trend": { "type": "string", "enum": ["up", "down", "flat"], "description": "Performance trend." },
+        "uid": { "type": "string", "description": "The UID of the creator's logged-in account." },
         "linkedChannelHandle": { "type": "string", "description": "YouTube handle (@handle)." },
         "youtubeChannelId": { "type": "string", "description": "YouTube Channel ID (UC...)." },
         "isVerified": { "type": "boolean", "description": "Whether the channel is verified by the MCN." },

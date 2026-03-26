@@ -99,12 +99,12 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               Log In
             </button>
             <motion.a 
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.9)" }}
+              whileHover={{ scale: 1.05, boxShadow: "0px 10px 25px rgba(99, 102, 241, 0.4)" }}
               whileTap={{ scale: 0.95 }}
               href="https://wa.me/8801927694437"
               target="_blank"
               rel="noreferrer"
-              className="px-4 sm:px-6 py-2.5 bg-white text-orbit-900 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all shadow-lg shadow-white/10 flex items-center gap-2"
+              className="px-4 sm:px-6 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
             >
               <span className="hidden xs:block">Book Free Consultation</span>
               <span className="xs:hidden">Book</span>
@@ -135,7 +135,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                 href="https://wa.me/8801927694437"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-3 bg-white text-orbit-900 rounded-xl font-bold text-center"
+                className="w-full py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-xl font-bold text-center shadow-lg shadow-emerald-500/20"
               >
                 Book Free Consultation
               </motion.a>
@@ -209,14 +209,17 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </motion.a>
             <motion.a 
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ 
+                scale: 1.05,
+                boxShadow: "0px 10px 25px rgba(16, 185, 129, 0.4)"
+              }}
               whileTap={{ scale: 0.95 }}
               href="https://wa.me/8801927694437"
               target="_blank"
               rel="noreferrer"
-              className="w-full sm:w-auto px-10 py-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl font-bold text-xl text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+              className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-emerald-500/30 transition-all flex items-center justify-center gap-3"
             >
-              <Phone size={20} className="text-green-400" />
+              <Phone size={20} className="text-white" />
               <span>Free Consultation</span>
             </motion.a>
           </motion.div>

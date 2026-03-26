@@ -13,6 +13,10 @@ interface HomePageProps {
 const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   
   // FAQ State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -480,10 +484,10 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
               <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
                 <div className="text-center md:text-left flex-1">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-400 mb-6 uppercase tracking-wider">Lifetime Access</div>
-                  <h3 className="text-5xl md:text-7xl font-display mb-4">$50</h3>
+                  <h3 className="text-5xl md:text-7xl font-display mb-4">$20</h3>
                   <p className="text-2xl font-bold text-white mb-6">One-Time Join Fee</p>
                   <p className="text-gray-400 leading-relaxed mb-8">
-                    Join the OrbitX MCN creator network with a simple one-time fee of $50 and unlock access to exclusive creator benefits.
+                    Join the OrbitX MCN creator network with a simple one-time fee of $20 and unlock access to exclusive creator benefits.
                   </p>
                   <motion.a 
                     whileHover={{ scale: 1.05 }}
@@ -605,8 +609,250 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             </span>
           </div>
           <div className="text-sm text-gray-500">© 2026 OrbitX MCN Network. All rights reserved.</div>
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setIsPrivacyModalOpen(true)}
+              className="text-sm text-gray-500 hover:text-white transition-colors cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+            <button 
+              onClick={() => setIsTermsModalOpen(true)}
+              className="text-sm text-gray-500 hover:text-white transition-colors cursor-pointer"
+            >
+              Terms & Conditions
+            </button>
+            <button 
+              onClick={() => setIsCookieModalOpen(true)}
+              className="text-sm text-gray-500 hover:text-white transition-colors cursor-pointer"
+            >
+              Cookie Policy
+            </button>
+            <button 
+              onClick={() => setIsRefundModalOpen(true)}
+              className="text-sm text-gray-500 hover:text-white transition-colors cursor-pointer"
+            >
+              Refund Policy
+            </button>
+          </div>
         </div>
       </footer>
+
+      {/* Privacy Policy Modal */}
+      <AnimatePresence>
+        {isPrivacyModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPrivacyModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-orbit-800 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full -mr-32 -mt-32"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-display uppercase">Privacy Policy</h2>
+                  <button 
+                    onClick={() => setIsPrivacyModalOpen(false)}
+                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <div className="space-y-6 text-gray-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                  <p>We respect your privacy and are committed to protecting your personal information.</p>
+                  <p>We may collect basic information such as your name, email address, and contact details when you use our website or apply for our services.</p>
+                  <p>This information is used only to provide and improve our services, communicate with you, and process your requests.</p>
+                  <p>We do not sell, trade, or share your personal information with third parties without your consent, except where required by law.</p>
+                  <p>We use secure systems to protect your data. However, no method of transmission over the internet is 100% secure.</p>
+                  <p>By using our website, you agree to this Privacy Policy.</p>
+                </div>
+                
+                <div className="mt-10 pt-8 border-t border-white/5">
+                  <button 
+                    onClick={() => setIsPrivacyModalOpen(false)}
+                    className="w-full py-4 bg-white text-orbit-900 rounded-2xl font-bold hover:bg-gray-100 transition-colors"
+                  >
+                    Got it, thanks
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Terms & Conditions Modal */}
+      <AnimatePresence>
+        {isTermsModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTermsModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-orbit-800 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 blur-3xl rounded-full -mr-32 -mt-32"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-display uppercase">Terms & Conditions</h2>
+                  <button 
+                    onClick={() => setIsTermsModalOpen(false)}
+                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <div className="space-y-6 text-gray-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                  <p>By accessing and using our website, you agree to comply with the following terms and conditions.</p>
+                  <p>OrbitX MCN provides services related to content monetization, copyright protection, and creator support.</p>
+                  <p>Users must provide accurate information when applying for our services.</p>
+                  <p>We reserve the right to accept or reject any application at our discretion.</p>
+                  <p>Any misuse of our services, including fraudulent activity or violation of platform policies (such as YouTube), may result in termination of service.</p>
+                  <p>We may update these terms at any time without prior notice.</p>
+                </div>
+                
+                <div className="mt-10 pt-8 border-t border-white/5">
+                  <button 
+                    onClick={() => setIsTermsModalOpen(false)}
+                    className="w-full py-4 bg-white text-orbit-900 rounded-2xl font-bold hover:bg-gray-100 transition-colors"
+                  >
+                    I Agree
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cookie Policy Modal */}
+      <AnimatePresence>
+        {isCookieModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCookieModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-orbit-800 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-3xl rounded-full -mr-32 -mt-32"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-display uppercase">Cookie Policy</h2>
+                  <button 
+                    onClick={() => setIsCookieModalOpen(false)}
+                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <div className="space-y-6 text-gray-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                  <p>Our website uses cookies to improve user experience and analyze website traffic.</p>
+                  <p>Cookies are small data files stored on your device that help us understand how users interact with our site.</p>
+                  <div>
+                    <p className="font-bold text-white mb-2">We use cookies for:</p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>Website functionality</li>
+                      <li>Analytics and performance</li>
+                      <li>Improving user experience</li>
+                    </ul>
+                  </div>
+                  <p>You can choose to disable cookies through your browser settings. However, some parts of the website may not function properly.</p>
+                </div>
+                
+                <div className="mt-10 pt-8 border-t border-white/5">
+                  <button 
+                    onClick={() => setIsCookieModalOpen(false)}
+                    className="w-full py-4 bg-white text-orbit-900 rounded-2xl font-bold hover:bg-gray-100 transition-colors"
+                  >
+                    Accept Cookies
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Refund Policy Modal */}
+      <AnimatePresence>
+        {isRefundModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsRefundModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-orbit-800 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 blur-3xl rounded-full -mr-32 -mt-32"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-display uppercase">Refund Policy</h2>
+                  <button 
+                    onClick={() => setIsRefundModalOpen(false)}
+                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <div className="space-y-6 text-gray-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                  <p>At OrbitX MCN, we aim to provide high-quality services to all creators.</p>
+                  <p>Due to the nature of digital services, all payments made are generally non-refundable.</p>
+                  <p>However, in special cases where a service has not been delivered as promised, users may request a review.</p>
+                  <p>Refund requests must be submitted within 7 days of payment.</p>
+                  <p>Each case will be evaluated individually, and the final decision will be made by our team.</p>
+                </div>
+                
+                <div className="mt-10 pt-8 border-t border-white/5">
+                  <button 
+                    onClick={() => setIsRefundModalOpen(false)}
+                    className="w-full py-4 bg-white text-orbit-900 rounded-2xl font-bold hover:bg-gray-100 transition-colors"
+                  >
+                    I Understand
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -37,7 +37,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ creators = [], analytics = [] }) 
 You help creators with YouTube strategy, content ideas, SEO, and platform questions. Keep your answers concise, professional, and encouraging.
 
 Here is specific information about joining OrbitX MCN:
-- Creator Join Fee: $50 (One-time payment)
+- Creator Join Fee: $20 (One-time payment)
 - Join Requirements: 
   • 1,000+ subscribers
   • Original content
@@ -95,7 +95,7 @@ You can use this information to answer questions about the network's performance
         You help creators with YouTube strategy, content ideas, SEO, and platform questions. Keep your answers concise, professional, and encouraging.
 
         Here is specific information about joining OrbitX MCN:
-        - Creator Join Fee: $50 (One-time payment)
+        - Creator Join Fee: $20 (One-time payment)
         - Join Requirements: 
           • 1,000+ subscribers
           • Original content

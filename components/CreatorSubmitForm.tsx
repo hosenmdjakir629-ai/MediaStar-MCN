@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle } from 'lucide-react';
-import { db } from '../src/firebase';
+import { db, handleFirestoreError, OperationType } from '../src/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { motion } from 'motion/react';
 
@@ -25,39 +25,47 @@ const CreatorSubmitForm: React.FC = () => {
     setFormStatus('sending');
     try {
       // 1. Add to notifications for admin alert
-      await addDoc(collection(db, 'notifications'), {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        channel: formData.channel,
-        subs: formData.subs,
-        channelName: formData.channel,
-        subscribers: parseInt(formData.subs) || 0,
-        niche: formData.niche,
-        goal: formData.goal,
-        status: 'unread',
-        timestamp: new Date().toISOString()
-      });
+      try {
+        await addDoc(collection(db, 'notifications'), {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          channel: formData.channel,
+          subs: formData.subs,
+          channelName: formData.channel,
+          subscribers: parseInt(formData.subs) || 0,
+          niche: formData.niche,
+          goal: formData.goal,
+          status: 'unread',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, 'notifications');
+      }
 
       // 2. Add to creators collection with Pending status (PHP script logic)
-      await addDoc(collection(db, 'creators'), {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        channel: formData.channel,
-        subs: formData.subs,
-        channelName: formData.channel,
-        subscribers: parseInt(formData.subs) || 0,
-        niche: formData.niche,
-        goal: formData.goal,
-        status: 'Pending',
-        totalViews: 0,
-        revenue: 0,
-        trend: 'flat',
-        avatarUrl: `https://i.pravatar.cc/150?u=${formData.email}`,
-        isVerified: false,
-        lastSynced: new Date().toISOString()
-      });
+      try {
+        await addDoc(collection(db, 'creators'), {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          channel: formData.channel,
+          subs: formData.subs,
+          channelName: formData.channel,
+          subscribers: parseInt(formData.subs) || 0,
+          niche: formData.niche,
+          goal: formData.goal,
+          status: 'Pending',
+          totalViews: 0,
+          revenue: 0,
+          trend: 'flat',
+          avatarUrl: `https://i.pravatar.cc/150?u=${formData.email}`,
+          isVerified: false,
+          lastSynced: new Date().toISOString()
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, 'creators');
+      }
 
       await fetch('/api/send-confirmation', {
         method: 'POST',
@@ -85,11 +93,7 @@ const CreatorSubmitForm: React.FC = () => {
       });
       setTimeout(() => setFormStatus('idle'), 3000);
     } catch (error: any) {
-      if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
-        console.debug('Application submission aborted');
-      } else {
-        console.error('Error submitting application:', error);
-      }
+      console.error('Error submitting application:', error);
       setFormStatus('idle');
     }
   };

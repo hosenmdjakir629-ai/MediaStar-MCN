@@ -98,8 +98,8 @@ const SupportView: React.FC = () => {
                             </div>
                             <div>
                                 <div className="text-sm text-gray-400 mb-1">Email Support</div>
-                                <div className="text-lg font-bold text-white">support@mediastar.network</div>
-                                <a href="mailto:support@mediastar.network" className="text-xs text-blue-400 hover:text-blue-300 mt-1 block">Send an email</a>
+                                <div className="text-lg font-bold text-white">support.orbitxmcn.digital@gmail.com</div>
+                                <a href="mailto:support.orbitxmcn.digital@gmail.com" className="text-xs text-blue-400 hover:text-blue-300 mt-1 block">Send an email</a>
                             </div>
                         </div>
                     </div>

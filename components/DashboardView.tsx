@@ -52,43 +52,51 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Creators" 
-          value={creators.length.toLocaleString()} 
-          change="+12.5%" 
-          trend="up" 
-          icon={Users} 
-          color="indigo" 
-        />
-        <StatCard 
-          title="Monthly Views" 
-          value="84.2M" 
-          change="+8.1%" 
-          trend="up" 
-          icon={Eye} 
-          color="cyan" 
-        />
-        <StatCard 
-          title="Network Revenue" 
-          value={`৳${creators.reduce((acc, curr) => acc + curr.revenue, 0).toLocaleString()}`} 
-          change="+2.4%" 
-          trend="up" 
-          icon={DollarSign} 
-          color="green" 
-        />
-        <StatCard 
-          title="Avg. Engagement" 
-          value="8.4%" 
-          change="-1.2%" 
-          trend="down" 
-          icon={TrendingUp} 
-          color="purple" 
-        />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <StatCard 
+            title="Total Creators" 
+            value={creators.length.toLocaleString()} 
+            change="+12.5%" 
+            trend="up" 
+            icon={Users} 
+            color="indigo" 
+          />
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <StatCard 
+            title="Monthly Views" 
+            value="84.2M" 
+            change="+8.1%" 
+            trend="up" 
+            icon={Eye} 
+            color="cyan" 
+          />
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <StatCard 
+            title="Network Revenue" 
+            value={`৳${creators.reduce((acc, curr) => acc + curr.revenue, 0).toLocaleString()}`} 
+            change="+2.4%" 
+            trend="up" 
+            icon={DollarSign} 
+            color="green" 
+          />
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <StatCard 
+            title="Avg. Engagement" 
+            value="8.4%" 
+            change="-1.2%" 
+            trend="down" 
+            icon={TrendingUp} 
+            color="purple" 
+          />
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Chart Section */}
-        <div className="lg:col-span-8 glass-card rounded-[2.5rem] p-10 relative overflow-hidden group">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="lg:col-span-8 glass-card rounded-[2.5rem] p-10 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orbit-500/20 to-transparent"></div>
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-12 relative z-10">
@@ -148,12 +156,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Column: Top Creators & Tasks */}
         <div className="lg:col-span-4 space-y-8">
           {/* Top Creators List */}
-          <div className="glass-card rounded-[2.5rem] p-8 relative overflow-hidden group">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }} className="glass-card rounded-[2.5rem] p-8 relative overflow-hidden group">
             <div className="flex items-center justify-between mb-8 relative z-10">
                 <div>
                   <h3 className="text-xl font-black text-white font-display tracking-tight mb-1">Top Performers</h3>
@@ -196,10 +204,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
               <span>VIEW ALL CREATORS</span>
               <ArrowRight size={14} className="group-hover/btn:translate-x-2 transition-transform" />
             </button>
-          </div>
+          </motion.div>
 
           {/* Quick Tasks Section */}
-          <div className="glass-card rounded-[2.5rem] p-8 relative overflow-hidden group">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 }} className="glass-card rounded-[2.5rem] p-8 relative overflow-hidden group">
             <div className="flex items-center justify-between mb-8 relative z-10">
                 <div>
                   <h3 className="text-xl font-black text-white font-display tracking-tight mb-1">Quick Tasks</h3>
@@ -244,7 +252,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>

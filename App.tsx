@@ -14,7 +14,6 @@ const DashboardView = lazy(() => import('./components/DashboardView'));
 const CreatorsView = lazy(() => import('./components/CreatorsView'));
 const AnalyticsView = lazy(() => import('./components/AnalyticsView'));
 const SettingsView = lazy(() => import('./components/SettingsView'));
-const AIStrategist = lazy(() => import('./components/AIStrategist'));
 const IntegrationsView = lazy(() => import('./components/IntegrationsView'));
 const SupportView = lazy(() => import('./components/SupportView'));
 const OnboardingModal = lazy(() => import('./components/OnboardingModal'));
@@ -26,7 +25,6 @@ const HomePage = lazy(() => import('./components/HomePage'));
 const CreatorDashboardView = lazy(() => import('./components/CreatorDashboardView'));
 const EarningsView = lazy(() => import('./components/EarningsView'));
 const ContentIDView = lazy(() => import('./components/ContentIDView'));
-const AIChatbot = lazy(() => import('./components/AIChatbot'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -355,8 +353,6 @@ const App: React.FC = () => {
         return <PayoutsView isAdmin={isAdmin} payouts={payouts} onAddPayout={handleAddPayout} onUpdatePayout={handleUpdatePayout} availableBalance={earnings.reduce((acc, e) => acc + (e.status === 'Ready' ? e.totalRevenue : 0), 0)} />;
       case TabView.SETTINGS:
         return <SettingsView onNavigate={setCurrentTab} />;
-      case TabView.AI_STRATEGIST:
-        return <AIStrategist creators={creators} />;
       case TabView.INTEGRATIONS:
         return <IntegrationsView />;
       case TabView.SUPPORT: return <SupportView />;
@@ -577,10 +573,6 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       {renderMainContent()}
-      {/* Global AI Chatbot */}
-      <Suspense fallback={null}>
-        <AIChatbot creators={creators} analytics={analytics} />
-      </Suspense>
     </ErrorBoundary>
   );
 };

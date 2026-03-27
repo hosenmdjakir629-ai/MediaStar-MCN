@@ -31,20 +31,12 @@ export interface AnalyticsData {
   subs: number;
 }
 
-export interface AIStrategyResponse {
-  titleIdeas: string[];
-  descriptionOptimization: string;
-  tags: string[];
-  contentGaps: string[];
-}
-
 export enum TabView {
   DASHBOARD = 'DASHBOARD',
   CREATORS = 'CREATORS',
   ANALYTICS = 'ANALYTICS',
   PAYOUTS = 'PAYOUTS',
   SETTINGS = 'SETTINGS',
-  AI_STRATEGIST = 'AI_STRATEGIST',
   INTEGRATIONS = 'INTEGRATIONS',
   SUPPORT = 'SUPPORT',
   SYSTEM_LOGS = 'SYSTEM_LOGS',

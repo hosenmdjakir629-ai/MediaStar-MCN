@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useState, lazy, Suspense, useRef } from 'react';
 const CreatorSubmitForm = lazy(() => import('./CreatorSubmitForm'));
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -17,6 +17,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // FAQ State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -87,7 +88,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             <a href="#advanced-features" onClick={(e) => scrollToSection(e, 'advanced-features')} className="hover:text-white transition-colors cursor-pointer">Advanced</a>
             <a href="#tools" onClick={(e) => scrollToSection(e, 'tools')} className="hover:text-white transition-colors cursor-pointer">Tools</a>
             <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition-colors cursor-pointer">Pricing</a>
-            <a href="#apply" onClick={(e) => scrollToSection(e, 'apply')} className="hover:text-indigo-400 transition-colors cursor-pointer font-bold text-indigo-300">Apply Now</a>
             <a href="#support" onClick={(e) => scrollToSection(e, 'support')} className="hover:text-white transition-colors cursor-pointer">Support</a>
           </div>
 
@@ -124,7 +124,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
           <div className="md:hidden absolute top-full left-0 w-full bg-orbit-900/95 backdrop-blur-xl border-b border-white/10 py-8 px-6 space-y-6 animate-fade-in">
             <div className="flex flex-col space-y-6">
               <a href="#features" onClick={(e) => { scrollToSection(e, 'features'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Features</a>
-              <a href="#apply" onClick={(e) => { scrollToSection(e, 'apply'); setIsMobileMenuOpen(false); }} className="text-lg font-bold text-indigo-400 hover:text-indigo-300">Apply Now</a>
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
               <a href="#pricing" onClick={(e) => { scrollToSection(e, 'pricing'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Pricing</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
@@ -185,29 +184,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <motion.a 
-              whileHover={{ 
-                scale: 1.05, 
-                y: -4,
-                boxShadow: "0px 10px 25px rgba(99, 102, 241, 0.4)"
-              }}
-              whileTap={{ scale: 0.98 }}
-              animate={{ 
-                boxShadow: ["0px 0px 0px rgba(99, 102, 241, 0)", "0px 0px 20px rgba(99, 102, 241, 0.4)", "0px 0px 0px rgba(99, 102, 241, 0)"] 
-              }}
-              transition={{ 
-                boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                type: "spring",
-                stiffness: 400,
-                damping: 10
-              }}
-              href="#apply"
-              onClick={(e) => scrollToSection(e, 'apply')}
-              className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 rounded-2xl font-bold text-xl text-white shadow-2xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 group"
-            >
-              <span>Apply Now</span>
-              <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-            </motion.a>
             <motion.a 
               whileHover={{ 
                 scale: 1.05,
@@ -502,19 +478,30 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                   <h3 className="text-5xl md:text-7xl font-display mb-4">$20</h3>
                   <p className="text-2xl font-bold text-white mb-6">One-Time Join Fee</p>
                   <p className="text-gray-400 leading-relaxed mb-8">
-                    Join the OrbitX MCN creator network with a simple one-time fee of $20 and unlock access to exclusive creator benefits.
+                    Join the OrbitX MCN creator network and unlock access to exclusive creator benefits.
                   </p>
-                  <motion.a 
+                  <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    href="https://shop.bkash.com/online-shop01978481393/paymentlink/default-payment"
-                    target="_blank"
-                    rel="noreferrer"
+                    onClick={() => fileInputRef.current?.click()}
                     className="inline-flex items-center gap-2 px-8 py-4 bg-white text-orbit-900 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-all shadow-xl shadow-white/10"
                   >
                     Get Started Now
                     <ArrowRight size={20} />
-                  </motion.a>
+                  </motion.button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept=".zip" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        console.log("ZIP file selected:", file.name);
+                        // Add upload logic here
+                      }
+                    }}
+                  />
                 </div>
                 
                 <div className="w-full md:w-72 space-y-4">

@@ -40,6 +40,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ data, creators, onViewCre
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => console.log("Get Started Now clicked")}
+            className="px-4 py-2 bg-white text-orbit-900 rounded-2xl font-bold text-xs hover:bg-gray-100 transition-all shadow-xl shadow-white/10"
+          >
+            Get Started Now
+          </button>
           <div className="px-4 py-2 bg-surface-900 border border-white/5 rounded-2xl flex items-center space-x-3">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
             <span className="text-[10px] font-black uppercase tracking-widest text-surface-400">System Live</span>

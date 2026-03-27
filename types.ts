@@ -22,6 +22,8 @@ export interface Creator {
   goal?: string;
   channel?: string;
   subs?: string;
+  customDomain?: string;
+  domainVerified?: boolean;
 }
 
 export interface AnalyticsData {
@@ -61,6 +63,7 @@ export enum TabView {
   CREATOR_CONTENT = 'CREATOR_CONTENT',
   CREATOR_COMMUNITY = 'CREATOR_COMMUNITY',
   CREATOR_MONETIZATION = 'CREATOR_MONETIZATION',
+  PAYMENT = 'PAYMENT',
 }
 
 export interface EarningsRecord {

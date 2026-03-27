@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { Save, Bell, User, Check, Shield, Globe, FileText, HelpCircle, X, AlertCircle, Play, Users, Plus, Trash2, Key, Activity, Mail, ExternalLink } from 'lucide-react';
-import { TabView } from '../types';
+import { TabView, Creator } from '../types';
 
 interface SettingsViewProps {
   onNavigate?: (tab: TabView) => void;
+  userRole?: 'admin' | 'creator' | 'viewer';
+  creators?: Creator[];
+  onUpdateCreator?: (creator: Creator) => Promise<void>;
 }
 
-const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate, userRole, creators, onUpdateCreator }) => {
   const [saved, setSaved] = useState(false);
   const [defaultPolicy, setDefaultPolicy] = useState('Monetize in all countries');
   const [autoClaim, setAutoClaim] = useState(true);
   const [showPolicyGuide, setShowPolicyGuide] = useState(false);
+  
+  const creator = creators && creators.length > 0 ? creators[0] : null;
+  const [customDomain, setCustomDomain] = useState(creator?.customDomain || '');
+  const [domainVerified, setDomainVerified] = useState(creator?.domainVerified || false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Team State
   const [teamMembers, setTeamMembers] = useState([
@@ -54,9 +62,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
     checkServerHealth();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (userRole === 'creator' && creator && onUpdateCreator) {
+      await onUpdateCreator({
+        ...creator,
+        customDomain,
+        domainVerified
+      });
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleVerifyDomain = async () => {
+    if (!customDomain) return;
+    setIsVerifying(true);
+    // Simulate verification process
+    setTimeout(() => {
+      setDomainVerified(true);
+      setIsVerifying(false);
+    }, 2000);
   };
 
   const handleInvite = () => {
@@ -74,6 +99,74 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
 
   return (
     <div className="max-w-4xl space-y-8 animate-fade-in pb-10">
+      {/* Custom Domain Section (For Creators) */}
+      {userRole === 'creator' && (
+        <div className="bg-orbit-800 rounded-2xl p-8 border border-orbit-700">
+          <div className="flex items-center space-x-3 mb-6">
+              <Globe className="text-orbit-500" />
+              <h3 className="text-xl font-bold text-white">Custom Domain</h3>
+          </div>
+          <div className="space-y-6">
+              <p className="text-sm text-gray-400">
+                Link your own custom domain to your OrbitX MCN profile. This will allow your audience to access your profile via your own branded URL.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-2">Domain Name</label>
+                      <div className="relative">
+                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                        <input 
+                          type="text" 
+                          placeholder="yourdomain.com" 
+                          value={customDomain}
+                          onChange={(e) => setCustomDomain(e.target.value)}
+                          className="w-full bg-orbit-900 border border-orbit-700 rounded-xl pl-12 pr-4 py-3 text-white focus:border-orbit-500 outline-none transition-colors" 
+                        />
+                      </div>
+                  </div>
+                  <div className="sm:self-end">
+                      <button 
+                        onClick={handleVerifyDomain}
+                        disabled={isVerifying || !customDomain || domainVerified}
+                        className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                          domainVerified 
+                            ? 'bg-emerald-500/20 text-emerald-500 cursor-default' 
+                            : 'bg-orbit-500 hover:bg-orbit-400 text-white disabled:opacity-50'
+                        }`}
+                      >
+                        {isVerifying ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : domainVerified ? (
+                          <><Check size={18} /> Verified</>
+                        ) : (
+                          'Verify Domain'
+                        )}
+                      </button>
+                  </div>
+              </div>
+              
+              {!domainVerified && customDomain && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <div className="flex gap-3">
+                    <AlertCircle className="text-amber-500 shrink-0" size={20} />
+                    <div className="space-y-2">
+                      <p className="text-sm font-bold text-amber-500">DNS Configuration Required</p>
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        To verify your domain, please add the following CNAME record to your domain's DNS settings:
+                      </p>
+                      <div className="bg-black/40 p-3 rounded-lg font-mono text-[10px] text-gray-300 break-all">
+                        Type: CNAME<br />
+                        Host: @<br />
+                        Value: cname.orbitxmcn.digital
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+          </div>
+        </div>
+      )}
+
       {/* Profile Settings */}
       <div className="bg-orbit-800 rounded-2xl p-8 border border-orbit-700">
         <div className="flex items-center space-x-3 mb-6">

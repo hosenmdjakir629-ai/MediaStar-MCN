@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense, useRef } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 const CreatorSubmitForm = lazy(() => import('./CreatorSubmitForm'));
 import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -8,16 +8,16 @@ import { TabView } from '../types';
 interface HomePageProps {
   onLoginClick: () => void;
   onLogin?: (tab?: TabView) => void;
+  onGetStarted: () => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
+const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted }) => {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // FAQ State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -483,25 +483,12 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin }) => {
                   <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={onGetStarted}
                     className="inline-flex items-center gap-2 px-8 py-4 bg-white text-orbit-900 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-all shadow-xl shadow-white/10"
                   >
                     Get Started Now
                     <ArrowRight size={20} />
                   </motion.button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    accept=".zip" 
-                    className="hidden" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        console.log("ZIP file selected:", file.name);
-                        // Add upload logic here
-                      }
-                    }}
-                  />
                 </div>
                 
                 <div className="w-full md:w-72 space-y-4">

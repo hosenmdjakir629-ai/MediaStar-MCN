@@ -25,6 +25,7 @@ const HomePage = lazy(() => import('./components/HomePage'));
 const CreatorDashboardView = lazy(() => import('./components/CreatorDashboardView'));
 const EarningsView = lazy(() => import('./components/EarningsView'));
 const ContentIDView = lazy(() => import('./components/ContentIDView'));
+const PaymentPage = lazy(() => import('./components/PaymentPage'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const [userRole, setUserRole] = useState<'admin' | 'viewer' | 'creator'>('viewer');
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showPaymentPage, setShowPaymentPage] = useState(false);
   const [currentTab, setCurrentTab] = useState<TabView>(TabView.DASHBOARD);
   
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -84,7 +86,7 @@ const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("Auth state changed. User:", user?.uid, "Email:", user?.email);
       if (user) {
-        setIsAdmin(user.email === 'hosenmdjakir629@gmail.com');
+        setIsAdmin(user.email === 'support.orbitxmcn.digital@gmail.com');
         try {
           const userRef = doc(db, 'users', user.uid);
           console.log("Fetching user document:", userRef.path);
@@ -95,7 +97,7 @@ const App: React.FC = () => {
             const userData: any = {
               uid: user.uid,
               email: user.email,
-              role: user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'creator',
+              role: user.email === 'support.orbitxmcn.digital@gmail.com' ? 'admin' : 'creator',
               createdAt: new Date().toISOString()
             };
             if (user.displayName) userData.name = user.displayName;
@@ -352,7 +354,7 @@ const App: React.FC = () => {
       case TabView.PAYOUTS:
         return <PayoutsView isAdmin={isAdmin} payouts={payouts} onAddPayout={handleAddPayout} onUpdatePayout={handleUpdatePayout} availableBalance={earnings.reduce((acc, e) => acc + (e.status === 'Ready' ? e.totalRevenue : 0), 0)} />;
       case TabView.SETTINGS:
-        return <SettingsView onNavigate={setCurrentTab} />;
+        return <SettingsView onNavigate={setCurrentTab} userRole={userRole} creators={creators} onUpdateCreator={handleUpdateCreator} />;
       case TabView.INTEGRATIONS:
         return <IntegrationsView />;
       case TabView.SUPPORT: return <SupportView />;
@@ -366,6 +368,8 @@ const App: React.FC = () => {
         return <PlaceholderView title="Resources" />;
       case TabView.CONTENT_ID:
         return <ContentIDView />;
+      case TabView.PAYMENT:
+        return <PaymentPage />;
       case TabView.RECRUITMENT:
         return <PlaceholderView title="Recruitment" />;
       case TabView.AI_TOOLS:
@@ -424,6 +428,13 @@ const App: React.FC = () => {
           </Suspense>
         );
       }
+      if (showPaymentPage) {
+        return (
+          <Suspense fallback={<div className="min-h-screen bg-orbit-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+            <PaymentPage />
+          </Suspense>
+        );
+      }
       return (
         <Suspense fallback={<div className="min-h-screen bg-orbit-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-orbit-500 border-t-transparent rounded-full animate-spin"></div></div>}>
           <HomePage 
@@ -432,6 +443,7 @@ const App: React.FC = () => {
               if (tab) setPendingTab(tab);
               setShowLogin(true);
             }} 
+            onGetStarted={() => setShowPaymentPage(true)}
           />
         </Suspense>
       );
@@ -462,20 +474,20 @@ const App: React.FC = () => {
           )}
           
           {/* Mobile Sidebar Overlay */}
-          {isSidebarOpen && window.innerWidth <= 1024 && (
+          {isSidebarOpen && (
             <div 
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden" 
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
           
-          <main className={`flex-1 transition-all duration-500 ${isSidebarOpen && window.innerWidth > 1024 ? 'lg:ml-64' : 'ml-0'} relative z-10 overflow-auto custom-scrollbar`}>
+          <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'lg:ml-64' : 'ml-0'} relative z-10 overflow-auto custom-scrollbar`}>
             {/* Header - Glassmorphism */}
             <header className="h-20 bg-surface-950/40 backdrop-blur-xl border-b border-white/5 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button 
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                  className={`p-2 text-surface-400 hover:text-white bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all ${isSidebarOpen && window.innerWidth > 1024 ? 'hidden' : 'block'}`}
+                  className={`p-2 text-surface-400 hover:text-white bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all ${isSidebarOpen ? 'lg:hidden' : 'block'}`}
                 >
                   <Menu size={20} />
                 </button>

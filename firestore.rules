@@ -12,7 +12,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-         (request.auth.token.email == "hosenmdjakir629@gmail.com" && request.auth.token.email_verified == true));
+         (request.auth.token.email == "support.orbitxmcn.digital@gmail.com" && request.auth.token.email_verified == true));
     }
 
     function isOwner(userId) {
@@ -90,6 +90,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (isAdmin() || request.resource.data.creatorId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin();
+      allow create: if true; // Allow public payment submissions
+      allow update, delete: if isAdmin();
     }
 
     match /logs/{logId} {

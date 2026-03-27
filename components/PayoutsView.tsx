@@ -26,15 +26,14 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
   const [receiptTransaction, setReceiptTransaction] = useState<PayoutRequest | null>(null);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   
-  const [paymentMethod, setPaymentMethod] = useState('nagad');
-  const [preferredMethod, setPreferredMethod] = useState('nagad');
-  const [withdrawalMethod, setWithdrawalMethod] = useState('nagad');
+  const [paymentMethod, setPaymentMethod] = useState('rocket');
+  const [preferredMethod, setPreferredMethod] = useState('rocket');
+  const [withdrawalMethod, setWithdrawalMethod] = useState('rocket');
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const [mfsDetails, setMfsDetails] = useState<{ [key: string]: string }>({
-    nagad: '01812345678',
     rocket: '01711223344',
     upay: '',
     tap: ''
@@ -54,7 +53,6 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
 
   const getMethodIcon = (method: string) => {
       const normalized = method.toLowerCase();
-      if (normalized.includes('nagad')) return <div className="w-5 h-5 flex items-center justify-center font-bold text-white bg-[#ec1d24] rounded text-[10px] shrink-0">N</div>;
       if (normalized.includes('rocket')) return <div className="w-5 h-5 flex items-center justify-center font-bold text-white bg-[#8c3494] rounded text-[10px] shrink-0">R</div>;
       return <Building2 className="w-5 h-5 text-blue-400 shrink-0" />;
   }
@@ -242,7 +240,7 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
                     <div className="space-y-4">
                         <label className="block text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Payout Method</label>
                         <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar">
-                            {['nagad', 'rocket', 'upay', 'tap', 'bank'].map(method => {
+                            {['rocket', 'upay', 'tap', 'bank'].map(method => {
                                 const configured = isMethodConfigured(method);
                                 const isSelected = withdrawalMethod === method;
                                 return (
@@ -344,7 +342,7 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
                 <div className="space-y-8 flex-1 relative z-10">
                     {/* Method Selection Grid */}
                     <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-                        {['nagad', 'rocket', 'upay', 'tap', 'bank'].map((method) => {
+                        {['rocket', 'upay', 'tap', 'bank'].map((method) => {
                             const isActive = paymentMethod === method;
                             return (
                                 <button 
@@ -356,7 +354,6 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
                                     {preferredMethod === method && <div className="absolute top-3 left-3 text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]"><Star size={12} fill="currentColor" /></div>}
                                     
                                     <div className="relative">
-                                      {method === 'nagad' && <div className="w-12 h-12 bg-[#ec1d24] rounded-2xl flex items-center justify-center shadow-2xl font-black text-white text-xl group-hover:scale-110 transition-transform">N</div>}
                                       {method === 'rocket' && <div className="w-12 h-12 bg-[#8c3494] rounded-2xl flex items-center justify-center shadow-2xl font-black text-white text-xl group-hover:scale-110 transition-transform">R</div>}
                                       {method === 'upay' && <div className="w-12 h-12 bg-[#00a1e0] rounded-2xl flex items-center justify-center shadow-2xl font-black text-white text-xl group-hover:scale-110 transition-transform">U</div>}
                                       {method === 'tap' && <div className="w-12 h-12 bg-[#682c91] rounded-2xl flex items-center justify-center shadow-2xl font-black text-white text-xl group-hover:scale-110 transition-transform">T</div>}
@@ -379,7 +376,7 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
                     <div className="p-8 bg-surface-950/50 rounded-[2rem] border border-white/5 min-h-[200px] flex items-center relative group/input-box overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-orbit-500/50 opacity-0 group-hover/input-box:opacity-100 transition-opacity"></div>
                         
-                        {['nagad', 'rocket', 'upay', 'tap'].includes(paymentMethod) && (
+                        {['rocket', 'upay', 'tap'].includes(paymentMethod) && (
                             <div className="w-full animate-fade-in relative z-10">
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-4">

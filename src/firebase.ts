@@ -6,8 +6,10 @@ import firebaseConfig from '../firebase-applet-config.json';
 console.log("Firebase config:", firebaseConfig);
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-console.log("Firestore initialized with database ID:", firebaseConfig.firestoreDatabaseId);
+export const db = (firebaseConfig as any).firestoreDatabaseId 
+  ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId) 
+  : getFirestore(app);
+console.log("Firestore initialized");
 export const auth = getAuth(app);
 
 export enum OperationType {

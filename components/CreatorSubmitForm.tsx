@@ -45,6 +45,14 @@ const CreatorSubmitForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('Please enter a valid email address.');
+      setFormStatus('idle');
+      return;
+    }
+
     setFormStatus('sending');
     try {
       let zipUrl = '';

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, MoreHorizontal, CheckCircle, AlertCircle, Trash2, X, Edit2, Save, XCircle, Camera, Youtube, TrendingUp, DollarSign, Users, Link as LinkIcon, Unlink, RefreshCw, ExternalLink, Check, ShieldCheck, Upload, Mail, UserPlus, Info, HelpCircle, Plus, Briefcase, Zap, Lock, Shield, Globe, Video, Clock, ImageUp, ShieldAlert } from 'lucide-react';
+import { generateContent } from '@/services/geminiService';
+import { Search, Filter, MoreHorizontal, CheckCircle, AlertCircle, Trash2, X, Edit2, Save, XCircle, Camera, Youtube, TrendingUp, DollarSign, Users, Link as LinkIcon, Unlink, RefreshCw, ExternalLink, Check, ShieldCheck, Upload, Mail, UserPlus, Info, HelpCircle, Plus, Briefcase, Zap, Lock, Shield, Globe, Video, Clock, ImageUp, ShieldAlert, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Creator } from '../types';
 import { fetchChannelDataByHandle } from '../services/youtubeService';
@@ -75,8 +76,23 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [channelHandleInput, setChannelHandleInput] = useState('');
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGenerateSummary = async (message: string) => {
+    setIsGeneratingSummary(true);
+    try {
+      const generatedSummary = await generateContent(`Summarize the following creator application message: ${message}`);
+      setSummary(generatedSummary);
+    } catch (error) {
+      console.error("Summary generation error:", error);
+      setSummary("Failed to generate summary.");
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
   const handleSyncCreator = async (e: React.MouseEvent, creator: Creator) => {
     e.stopPropagation();
@@ -176,6 +192,7 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
     setIsEditing(false);
     setChannelHandleInput('');
     setSyncSuccess(false);
+    setSummary(null);
   };
 
   const processAvatarFile = (file: File) => {
@@ -627,10 +644,28 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                         )}
                         {editForm.message && (
                           <div className="md:col-span-2 space-y-2">
-                            <label className="text-[10px] font-black text-surface-500 uppercase tracking-[0.2em] ml-2">Creator Message</label>
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] font-black text-surface-500 uppercase tracking-[0.2em] ml-2">Creator Message</label>
+                              {!summary && (
+                                <button 
+                                  onClick={() => handleGenerateSummary(editForm.message!)}
+                                  disabled={isGeneratingSummary}
+                                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-orbit-400 hover:text-orbit-300 transition-colors disabled:opacity-50"
+                                >
+                                  <Sparkles size={12} />
+                                  {isGeneratingSummary ? 'Generating...' : 'Generate Summary'}
+                                </button>
+                              )}
+                            </div>
                             <div className="w-full px-6 py-4 bg-surface-900/50 border border-white/5 rounded-2xl text-white font-medium whitespace-pre-wrap">
                               {editForm.message}
                             </div>
+                            {summary && (
+                              <div className="mt-4 p-6 bg-orbit-500/10 border border-orbit-500/20 rounded-2xl">
+                                <div className="text-[10px] font-black text-orbit-400 uppercase tracking-widest mb-2">AI Generated Summary</div>
+                                <p className="text-sm text-orbit-100">{summary}</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

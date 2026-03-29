@@ -19,7 +19,7 @@ export interface Creator {
   uploadPolicy?: string;
   email?: string;
   phone?: string;
-  goal?: string;
+  message?: string;
   channel?: string;
   subs?: string;
   customDomain?: string;
@@ -97,6 +97,22 @@ export interface CopyrightClaim {
   date: string;
   policy: 'Monetize' | 'Track' | 'Block';
   creatorId: string;
+}
+
+export interface Notification {
+  id: string;
+  name: string;
+  email: string;
+  channel: string;
+  subs: string;
+  channelName: string;
+  subscribers: number;
+  niche: string;
+  message: string;
+  formattedMessage?: string;
+  zipUrl?: string;
+  status: 'unread' | 'read';
+  timestamp: string;
 }
 
 export interface ContentAsset {

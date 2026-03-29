@@ -4,16 +4,16 @@ import { db, storage, handleFirestoreError, OperationType } from '../src/firebas
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'motion/react';
+import emailjs from '@emailjs/browser';
 
 const CreatorSubmitForm: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
     channel: '',
     subs: '',
     niche: 'Gaming',
-    goal: ''
+    message: ''
   });
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success'>('idle');
@@ -61,18 +61,27 @@ const CreatorSubmitForm: React.FC = () => {
         }
       }
 
+      const formattedMessage = `Creator Application
+
+Name: ${formData.name}
+Email: ${formData.email}
+Channel Url: ${formData.channel}
+Subscribers: ${formData.subs}
+Niche: ${formData.niche}
+Message: ${formData.message}`;
+
       // 1. Add to notifications for admin alert
       try {
         await addDoc(collection(db, 'notifications'), {
           name: formData.name,
           email: formData.email,
-          phone: formData.phone,
           channel: formData.channel,
           subs: formData.subs,
           channelName: formData.channel,
           subscribers: parseInt(formData.subs) || 0,
           niche: formData.niche,
-          goal: formData.goal,
+          message: formData.message,
+          formattedMessage: formattedMessage,
           zipUrl: zipUrl,
           status: 'unread',
           timestamp: new Date().toISOString()
@@ -86,13 +95,12 @@ const CreatorSubmitForm: React.FC = () => {
         await addDoc(collection(db, 'creators'), {
           name: formData.name,
           email: formData.email,
-          phone: formData.phone,
           channel: formData.channel,
           subs: formData.subs,
           channelName: formData.channel,
           subscribers: parseInt(formData.subs) || 0,
           niche: formData.niche,
-          goal: formData.goal,
+          message: formData.message,
           zipUrl: zipUrl,
           status: 'Pending',
           totalViews: 0,
@@ -106,15 +114,34 @@ const CreatorSubmitForm: React.FC = () => {
         handleFirestoreError(error, OperationType.CREATE, 'creators');
       }
 
+      // 3. Send Email via EmailJS
+      try {
+        await emailjs.send(
+          "service_5x5e82j",
+          "template_sdpbcga",
+          {
+            name: formData.name,
+            email: formData.email,
+            channel: formData.channel,
+            subscribers: formData.subs,
+            niche: formData.niche,
+            message: formData.message
+          },
+          "623oC0hN3jCe4EkfW"
+        );
+      } catch (error) {
+        console.error('EmailJS Error:', error);
+        // Optionally handle email failure (e.g. log it but don't fail the whole submission)
+      }
+
       setFormStatus('success');
       setFormData({
         name: '',
         email: '',
-        phone: '',
         channel: '',
         subs: '',
         niche: 'Gaming',
-        goal: ''
+        message: ''
       });
       setZipFile(null);
       setTimeout(() => setFormStatus('idle'), 3000);
@@ -153,8 +180,7 @@ const CreatorSubmitForm: React.FC = () => {
             {[
               { name: 'name', placeholder: 'Full Name', type: 'text', required: true },
               { name: 'email', placeholder: 'Email Address', type: 'email', required: true },
-              { name: 'phone', placeholder: 'WhatsApp Number', type: 'text', required: true },
-              { name: 'channel', placeholder: 'Channel Link', type: 'text', required: true },
+              { name: 'channel', placeholder: 'Channel Url', type: 'text', required: true },
               { name: 'subs', placeholder: 'Subscribers', type: 'number' },
             ].map((field) => (
               <motion.div
@@ -244,10 +270,10 @@ const CreatorSubmitForm: React.FC = () => {
             </div>
 
             <textarea 
-              name="goal" 
-              value={formData.goal} 
+              name="message" 
+              value={formData.message} 
               onChange={handleChange} 
-              placeholder="Your Goal" 
+              placeholder="Message" 
               className="w-full h-40 bg-white/5 border border-white/10 rounded-[2rem] px-6 py-5 text-white placeholder:text-surface-600 outline-none focus:border-orbit-500/50 focus:bg-white/10 transition-all font-bold tracking-tight resize-none" 
             />
           </motion.div>

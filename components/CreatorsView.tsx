@@ -587,7 +587,7 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                   </section>
 
                   {/* Application Details Section */}
-                  {(editForm.email || editForm.phone || editForm.goal || editForm.channel || editForm.subs) && (
+                  {(editForm.email || editForm.message || editForm.channel || editForm.subs) && (
                     <section>
                       <h5 className="text-[10px] font-black text-surface-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
                         <span className="w-8 h-[1px] bg-blue-500/30"></span> Application Details
@@ -625,11 +625,11 @@ const CreatorsView: React.FC<CreatorsViewProps> = ({ creators, onAddCreator, onD
                             </div>
                           </div>
                         )}
-                        {editForm.goal && (
+                        {editForm.message && (
                           <div className="md:col-span-2 space-y-2">
-                            <label className="text-[10px] font-black text-surface-500 uppercase tracking-[0.2em] ml-2">Creator Goal</label>
+                            <label className="text-[10px] font-black text-surface-500 uppercase tracking-[0.2em] ml-2">Creator Message</label>
                             <div className="w-full px-6 py-4 bg-surface-900/50 border border-white/5 rounded-2xl text-white font-medium whitespace-pre-wrap">
-                              {editForm.goal}
+                              {editForm.message}
                             </div>
                           </div>
                         )}

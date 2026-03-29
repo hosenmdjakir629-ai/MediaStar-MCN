@@ -28,6 +28,7 @@ const ContentIDView = lazy(() => import('./components/ContentIDView'));
 const PaymentPage = lazy(() => import('./src/pages/PaymentPage'));
 const SuccessPage = lazy(() => import('./src/pages/SuccessPage'));
 
+const NotificationsView = lazy(() => import('./components/NotificationsView'));
 const App: React.FC = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -381,7 +382,7 @@ const App: React.FC = () => {
       case TabView.LEADERBOARD:
         return <PlaceholderView title="Leaderboard" />;
       case TabView.NOTIFICATIONS:
-        return <PlaceholderView title="Notifications" />;
+        return <NotificationsView />;
       case TabView.ADVANCED_FINANCIALS:
         return <PlaceholderView title="Advanced Financial Analytics" />;
       case TabView.CRM:

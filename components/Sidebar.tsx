@@ -77,10 +77,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, onLogout, on
         
         <div className="text-center relative z-10">
           <h1 className="text-2xl font-black orbit-text-gradient font-display tracking-tighter">
-            OrbitX
+            OrbitX MCN
           </h1>
           <p className="text-[9px] text-surface-500 font-black tracking-[0.3em] uppercase mt-1">
-            MediaStar MCN
+            Next-Gen Creator Network
           </p>
         </div>
         

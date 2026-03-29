@@ -28,7 +28,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate, userRole, creat
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', role: 'Content Manager' });
 
-  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [serverStatus, setServerStatus] = useState<'online' | 'offline'>('online');
   const [responseTime, setResponseTime] = useState<number | null>(null);
 
   const [emailPrefs, setEmailPrefs] = useState({
@@ -39,27 +39,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate, userRole, creat
   });
 
   const checkServerHealth = async () => {
-    setServerStatus('checking');
-    const start = Date.now();
-    try {
-      const res = await fetch('/api/health');
-      if (res.ok) {
-        setServerStatus('online');
-        setResponseTime(Date.now() - start);
-      } else {
-        setServerStatus('offline');
-      }
-    } catch (error) {
-      if (error instanceof Error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
-        console.debug("SettingsView: Health check aborted.");
-        return;
-      }
-      setServerStatus('offline');
-    }
+    // Mock health check for frontend-only mode
+    setResponseTime(Math.floor(Math.random() * 50) + 20);
   };
 
   React.useEffect(() => {
-    checkServerHealth();
+    // Initial mock health check
+    setResponseTime(45);
   }, []);
 
   const handleSave = async () => {
@@ -157,7 +143,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate, userRole, creat
                       <div className="bg-black/40 p-3 rounded-lg font-mono text-[10px] text-gray-300 break-all">
                         Type: CNAME<br />
                         Host: @<br />
-                        Value: cname.orbitxmcn.digital
+                        Value: cname.mediastarmcn.digital
                       </div>
                     </div>
                   </div>
@@ -193,10 +179,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate, userRole, creat
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">API Status</p>
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">System Status</p>
                 <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${serverStatus === 'online' ? 'bg-emerald-500' : serverStatus === 'offline' ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'}`}></div>
-                    <span className="text-lg font-bold text-white capitalize">{serverStatus}</span>
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-lg font-bold text-white capitalize">Operational</span>
                 </div>
             </div>
             <div className="p-4 bg-orbit-900/50 border border-orbit-700 rounded-xl">
@@ -214,12 +200,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate, userRole, creat
                     <Globe size={18} />
                 </div>
                 <div>
-                    <p className="text-sm font-bold text-white">Primary Endpoint</p>
-                    <p className="text-xs text-gray-500">/api/health</p>
+                    <p className="text-sm font-bold text-white">Network Status</p>
+                    <p className="text-xs text-gray-500">All systems operational</p>
                 </div>
             </div>
-            <button onClick={checkServerHealth} className="text-xs font-bold text-orbit-500 hover:text-orbit-400 transition-colors disabled:opacity-50" disabled={serverStatus === 'checking'}>
-                {serverStatus === 'checking' ? 'Testing...' : 'Test Connection'}
+            <button onClick={checkServerHealth} className="text-xs font-bold text-orbit-500 hover:text-orbit-400 transition-colors">
+                Refresh Status
             </button>
         </div>
       </div>

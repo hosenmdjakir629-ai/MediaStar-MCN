@@ -1,17 +1,15 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 const CreatorSubmitForm = lazy(() => import('./CreatorSubmitForm'));
-import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, BrainCircuit, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock, Bot } from 'lucide-react';
+import { Rocket, ArrowRight, Zap, Globe, Shield, BarChart3, CheckCircle, Play, Users, Wallet, ChevronRight, Music, FileText, Layers, Scale, DollarSign, Headphones, Check, HelpCircle, MessageSquare, Send, ChevronDown, ChevronUp, Phone, X, CreditCard, RefreshCw, Copy, ExternalLink, TrendingUp, Briefcase, Menu, UserCheck, Calendar, Trophy, BellRing, PieChart, UserSearch, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { TabView } from '../types';
 
 interface HomePageProps {
-  onLoginClick: () => void;
-  onLogin?: (tab?: TabView) => void;
   onGetStarted: () => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted }) => {
+const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
@@ -79,7 +77,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted
             </div>
             <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">
               <span className="font-bold">OrbitX MCN</span>
-              <span className="text-sm font-medium ml-2 opacity-80">- Powered by MediaStar</span>
             </span>
           </div>
           
@@ -92,12 +89,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted
           </div>
 
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={onLoginClick}
-              className="px-5 py-2.5 text-sm font-bold text-white hover:text-indigo-300 transition-colors hidden sm:block"
-            >
-              Log In
-            </button>
             <motion.a 
               whileHover={{ scale: 1.05, boxShadow: "0px 10px 25px rgba(99, 102, 241, 0.4)" }}
               whileTap={{ scale: 0.95 }}
@@ -127,7 +118,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted
               <a href="#tools" onClick={(e) => { scrollToSection(e, 'tools'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Tools</a>
               <a href="#pricing" onClick={(e) => { scrollToSection(e, 'pricing'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Pricing</a>
               <a href="#support" onClick={(e) => { scrollToSection(e, 'support'); setIsMobileMenuOpen(false); }} className="text-lg font-medium text-gray-300 hover:text-white">Support</a>
-              <button onClick={() => { onLoginClick(); setIsMobileMenuOpen(false); }} className="text-left text-lg font-medium text-indigo-400">Log In</button>
               <motion.a 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -336,89 +326,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted
         </div>
       </section>
 
-      {/* AI Strategist Integration Section */}
-      <section className="py-24 relative z-10 overflow-hidden bg-orbit-900/30">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-gradient-to-br from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-[3rem] border border-white/10 p-8 md:p-16 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-orbit-500/10 blur-[100px] rounded-full -mr-48 -mt-48 group-hover:bg-orbit-500/20 transition-colors duration-700"></div>
-            
-            <div className="flex flex-col lg:flex-row items-center gap-12 relative z-10">
-              <div className="flex-1 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orbit-500/10 border border-orbit-500/20 text-sm font-bold text-orbit-400 mb-6 uppercase tracking-widest">
-                  <BrainCircuit size={18} className="animate-pulse" />
-                  AI-Powered Growth
-                </div>
-                <h2 className="text-4xl md:text-6xl font-display uppercase mb-6 leading-tight">Your Personal <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 font-black">AI Strategist</span></h2>
-                <p className="text-gray-300 text-lg mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                  Get 24/7 expert advice on content strategy, SEO optimization, and audience growth. Our AI is trained on data from thousands of successful channels to give you the competitive edge.
-                </p>
-                <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-10">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5 text-sm font-medium text-gray-300">
-                    <CheckCircle size={16} className="text-emerald-400" />
-                    SEO Optimization
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5 text-sm font-medium text-gray-300">
-                    <CheckCircle size={16} className="text-emerald-400" />
-                    Content Ideas
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5 text-sm font-medium text-gray-300">
-                    <CheckCircle size={16} className="text-emerald-400" />
-                    Trend Analysis
-                  </div>
-                </div>
-                <button 
-                  onClick={() => {
-                    // Trigger the global chatbot
-                    const chatbotBtn = document.querySelector('button[class*="fixed bottom-8 right-8"]') as HTMLButtonElement;
-                    if (chatbotBtn) chatbotBtn.click();
-                  }}
-                  className="px-8 py-4 bg-white text-orbit-900 rounded-2xl font-bold text-lg hover:bg-indigo-50 transition-all shadow-xl shadow-indigo-500/10 flex items-center gap-2 mx-auto lg:mx-0"
-                >
-                  <MessageSquare size={20} />
-                  Chat with AI Now
-                </button>
-              </div>
-              
-              <div className="w-full lg:w-[450px] aspect-square relative">
-                <div className="absolute inset-0 bg-orbit-500/20 rounded-full blur-3xl animate-pulse-slow"></div>
-                <div className="relative w-full h-full bg-surface-900/80 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 flex flex-col shadow-2xl overflow-hidden">
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 rounded-2xl bg-orbit-500/20 flex items-center justify-center text-orbit-400 border border-orbit-500/20">
-                      <Bot size={24} />
-                    </div>
-                    <div>
-                      <div className="text-white font-bold">OrbitX AI</div>
-                      <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span> Active
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4 flex-1">
-                    <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none border border-white/5 text-sm text-gray-300 leading-relaxed">
-                      "I've analyzed your niche. Based on current trends, a 10-minute deep dive into 'AI Tools for Creators' would likely perform 40% better than your average video."
-                    </div>
-                    <div className="bg-orbit-600 p-4 rounded-2xl rounded-tr-none text-sm text-white font-medium self-end ml-12">
-                      "That sounds great! What keywords should I use?"
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none border border-white/5 text-sm text-gray-300 leading-relaxed">
-                      "Focus on 'Generative AI', 'Content Automation', and 'Creator Economy'. These have high search volume and low competition right now."
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 pt-6 border-t border-white/5 flex items-center gap-3">
-                    <div className="flex-1 h-10 bg-white/5 rounded-xl border border-white/10"></div>
-                    <div className="w-10 h-10 bg-orbit-600 rounded-xl flex items-center justify-center text-white">
-                      <Send size={18} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Advanced CMS Tools Section */}
       <section id="tools" className="py-24 relative z-10 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
@@ -429,8 +336,8 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted
                    <p className="text-gray-400 text-lg mb-8 leading-relaxed">Managing thousands of assets requires more than a standard dashboard. Our proprietary CMS tools streamline your workflow.</p>
                    <div className="space-y-6">
                        <ToolItem icon={FileText} title="Bulk Metadata Editing" desc="Update thousands of video descriptions, tags, and titles in seconds." />
-                       <ToolItem icon={Layers} title="Asset Labels & Ownership" desc="Precise control over territorial rights and claiming rules across regions." onClick={() => onLogin && onLogin(TabView.CONTENT_ID)} />
-                       <ToolItem icon={Scale} title="Conflict Resolution" desc="We handle the manual work of resolving copyright disputes so you don't have to." onClick={() => onLogin && onLogin(TabView.CONTENT_ID)} />
+                       <ToolItem icon={Layers} title="Asset Labels & Ownership" desc="Precise control over territorial rights and claiming rules across regions." />
+                       <ToolItem icon={Scale} title="Conflict Resolution" desc="We handle the manual work of resolving copyright disputes so you don't have to." />
                        <ToolItem icon={BarChart3} title="Detailed Reporting" desc="Transparent, downloadable financial reports that make accounting a breeze." />
                    </div>
                </div>
@@ -594,7 +501,6 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onLogin, onGetStarted
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center"><Rocket className="text-white w-4 h-4" /></div>
             <span className="text-lg font-bold text-white">
               <span className="font-bold">OrbitX MCN</span>
-              <span className="text-xs font-medium ml-2 opacity-60">- Powered by MediaStar</span>
             </span>
           </div>
           <div className="text-sm text-gray-500">© 2026 OrbitX MCN Network. All rights reserved.</div>

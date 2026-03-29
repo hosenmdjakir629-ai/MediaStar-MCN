@@ -628,7 +628,7 @@ const PayoutsView: React.FC<PayoutsViewProps> = ({
                             </div>
 
                             <div className="pt-10 text-center">
-                              <div className="text-[10px] text-surface-400 font-black uppercase tracking-[0.3em] mb-4">Thank you for being part of OrbitX</div>
+                              <div className="text-[10px] text-surface-400 font-black uppercase tracking-[0.3em] mb-4">Thank you for being part of OrbitX MCN</div>
                               <div className="flex justify-center gap-1">
                                 {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}
                               </div>

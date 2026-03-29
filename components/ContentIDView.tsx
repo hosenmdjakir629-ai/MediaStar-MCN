@@ -10,7 +10,7 @@ const MOCK_CLAIMS: CopyrightClaim[] = [
 ];
 
 const MOCK_ASSETS: ContentAsset[] = [
-  { id: 'A-5001', title: 'OrbitX Intro Theme', type: 'Sound Recording', ownership: 'Global', matches: 142, dailyViews: 45000, status: 'Active' },
+  { id: 'A-5001', title: 'OrbitX MCN Intro Theme', type: 'Sound Recording', ownership: 'Global', matches: 142, dailyViews: 45000, status: 'Active' },
   { id: 'A-5002', title: 'Gaming Highlights Compilation Vol 1', type: 'Web', ownership: 'North America, Europe', matches: 38, dailyViews: 12000, status: 'Active' },
   { id: 'A-5003', title: 'Tech Review Background Music', type: 'Audio', ownership: 'Global', matches: 512, dailyViews: 150000, status: 'Active' },
   { id: 'A-5004', title: 'Old Vlog Outro', type: 'Sound Recording', ownership: 'Global', matches: 5, dailyViews: 300, status: 'Inactive' },

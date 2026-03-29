@@ -230,7 +230,7 @@ const CreatorDashboardView: React.FC<CreatorDashboardViewProps> = ({ creators, a
                     </div>
                     <span className="text-[10px] font-bold text-gray-400">@user{i}</span>
                   </div>
-                  <p className="text-xs text-gray-400 line-clamp-2 italic">"This strategy literally doubled my views in a week. Thanks OrbitX!"</p>
+                  <p className="text-xs text-gray-400 line-clamp-2 italic">"This strategy literally doubled my views in a week. Thanks OrbitX MCN!"</p>
                 </div>
               ))}
             </div>

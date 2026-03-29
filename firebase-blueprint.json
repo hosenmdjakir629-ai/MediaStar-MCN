@@ -37,6 +37,7 @@
         "linkedChannelHandle": { "type": "string", "description": "YouTube handle (@handle)." },
         "youtubeChannelId": { "type": "string", "description": "YouTube Channel ID (UC...)." },
         "isVerified": { "type": "boolean", "description": "Whether the channel is verified by the MCN." },
+        "zipUrl": { "type": "string", "format": "uri", "description": "URL to the uploaded ZIP file." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
         "createdBy": { "type": "string", "description": "UID of the user who added this creator." }
       },
@@ -111,6 +112,7 @@
         "subscribers": { "type": "number", "description": "Subscriber count." },
         "niche": { "type": "string", "description": "Content niche." },
         "goal": { "type": "string", "description": "Creator goal." },
+        "zipUrl": { "type": "string", "format": "uri", "description": "URL to the uploaded ZIP file." },
         "status": { "type": "string", "enum": ["unread", "read"], "description": "Notification status." },
         "timestamp": { "type": "string", "format": "date-time", "description": "Time of notification." }
       },

@@ -53,7 +53,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack }) => {
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
             <span className="font-bold">OrbitX MCN</span>
-            <span className="text-sm font-medium block text-gray-400 mt-1">- Powered by MediaStar</span>
           </h1>
           <p className="text-sm text-gray-400 px-4">
             {isLogin 

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Send, CheckCircle } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../src/firebase';
+import React, { useState, useRef } from 'react';
+import { Send, CheckCircle, Upload, X, FileArchive } from 'lucide-react';
+import { db, storage, handleFirestoreError, OperationType } from '../src/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { motion } from 'motion/react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { motion, AnimatePresence } from 'motion/react';
 
 const CreatorSubmitForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -14,16 +15,52 @@ const CreatorSubmitForm: React.FC = () => {
     niche: 'Gaming',
     goal: ''
   });
+  const [zipFile, setZipFile] = useState<File | null>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success'>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        setZipFile(file);
+      } else {
+        alert('Please upload a .zip file.');
+        e.target.value = '';
+      }
+    }
+  };
+
+  const removeFile = () => {
+    setZipFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormStatus('sending');
     try {
+      let zipUrl = '';
+      
+      // 0. Upload ZIP file if exists
+      if (zipFile) {
+        try {
+          const storageRef = ref(storage, `applications/${Date.now()}_${zipFile.name}`);
+          const snapshot = await uploadBytes(storageRef, zipFile);
+          zipUrl = await getDownloadURL(snapshot.ref);
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          // Continue without file if upload fails, or handle error
+        }
+      }
+
       // 1. Add to notifications for admin alert
       try {
         await addDoc(collection(db, 'notifications'), {
@@ -36,6 +73,7 @@ const CreatorSubmitForm: React.FC = () => {
           subscribers: parseInt(formData.subs) || 0,
           niche: formData.niche,
           goal: formData.goal,
+          zipUrl: zipUrl,
           status: 'unread',
           timestamp: new Date().toISOString()
         });
@@ -55,6 +93,7 @@ const CreatorSubmitForm: React.FC = () => {
           subscribers: parseInt(formData.subs) || 0,
           niche: formData.niche,
           goal: formData.goal,
+          zipUrl: zipUrl,
           status: 'Pending',
           totalViews: 0,
           revenue: 0,
@@ -67,20 +106,6 @@ const CreatorSubmitForm: React.FC = () => {
         handleFirestoreError(error, OperationType.CREATE, 'creators');
       }
 
-      await fetch('/api/send-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          channel: formData.channel,
-          subscribers: formData.subs,
-          niche: formData.niche,
-          goal: formData.goal
-        })
-      });
-
       setFormStatus('success');
       setFormData({
         name: '',
@@ -91,6 +116,7 @@ const CreatorSubmitForm: React.FC = () => {
         niche: 'Gaming',
         goal: ''
       });
+      setZipFile(null);
       setTimeout(() => setFormStatus('idle'), 3000);
     } catch (error: any) {
       console.error('Error submitting application:', error);
@@ -106,7 +132,7 @@ const CreatorSubmitForm: React.FC = () => {
       <div className="relative z-10">
         <div className="mb-10">
           <h2 className="text-4xl font-black text-white font-display tracking-tight mb-2">Creator Application</h2>
-          <p className="text-surface-400 font-bold text-sm uppercase tracking-widest">Join the OrbitX network today</p>
+          <p className="text-surface-400 font-bold text-sm uppercase tracking-widest">Join the OrbitX MCN network today</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -171,7 +197,52 @@ const CreatorSubmitForm: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
+            className="space-y-4"
           >
+            <div className="relative">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".zip"
+                className="hidden"
+                id="zip-upload"
+              />
+              <label
+                htmlFor="zip-upload"
+                className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${zipFile ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-orbit-500/50'}`}
+              >
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  {zipFile ? (
+                    <div className="flex items-center space-x-3 text-emerald-400">
+                      <FileArchive size={32} />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold truncate max-w-[200px]">{zipFile.name}</span>
+                        <span className="text-xs opacity-60">{(zipFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 mb-3 text-surface-400" />
+                      <p className="mb-2 text-sm text-surface-400 font-bold">
+                        <span className="text-orbit-400">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-surface-500">ZIP file only (max 10MB)</p>
+                    </>
+                  )}
+                </div>
+              </label>
+              {zipFile && (
+                <button
+                  type="button"
+                  onClick={removeFile}
+                  className="absolute top-2 right-2 p-1 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
             <textarea 
               name="goal" 
               value={formData.goal} 
@@ -195,7 +266,11 @@ const CreatorSubmitForm: React.FC = () => {
             whileTap={{ scale: 0.98 }}
             type="submit" 
             disabled={formStatus === 'sending' || formStatus === 'success'} 
-            className={`relative w-full py-6 rounded-3xl font-black text-white shadow-2xl transition-all flex items-center justify-center gap-3 overflow-hidden text-lg tracking-widest ${formStatus === 'success' ? 'bg-emerald-500' : 'bg-orbit-600 hover:bg-orbit-500'}`}
+            className={`relative w-full py-6 rounded-3xl font-black text-white shadow-2xl transition-all flex items-center justify-center gap-3 overflow-hidden text-lg tracking-widest ${
+              formStatus === 'success' 
+                ? 'bg-emerald-500' 
+                : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-orbit-600 hover:from-indigo-500 hover:via-purple-500 hover:to-orbit-500'
+            }`}
           >
             {/* Shimmer Effect */}
             {formStatus === 'idle' && (
@@ -230,3 +305,4 @@ const CreatorSubmitForm: React.FC = () => {
 };
 
 export default CreatorSubmitForm;
+

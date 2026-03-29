@@ -41,35 +41,6 @@ export const fetchChannelDataByHandle = async (handle: string): Promise<YouTubeC
     }
   });
 
-  try {
-    // Call our backend proxy instead of direct Google API
-    const response = await fetch(`/api/youtube/channel/${encodeURIComponent(cleanHandle)}`);
-
-    if (!response.ok) {
-      if (response.status === 500 || response.status === 504) {
-        // 500: Missing key, 504: Timeout/Abort on server
-        console.debug(`OrbitX MCN: Backend API ${response.status}. Falling back to mock.`);
-        return getMockData();
-      }
-      throw new Error(`Backend API error: ${response.statusText}`);
-    }
-
-    const item = await response.json();
-    
-    return {
-      id: item.id,
-      title: item.snippet.title,
-      customUrl: item.snippet.customUrl,
-      thumbnails: item.snippet.thumbnails,
-      statistics: item.statistics
-    };
-  } catch (error: any) {
-    if (error && (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted') || error.message?.includes('The user aborted a request'))) {
-      console.debug("OrbitX MCN: YouTube fetch was aborted. Returning mock data.");
-      return getMockData();
-    }
-    console.error("OrbitX MCN: Error fetching YouTube data from backend, falling back to mock.", error);
-    // Return mock data on API failure to keep app usable
-    return getMockData();
-  }
+  // Since backend is removed, we always return mock data
+  return getMockData();
 };

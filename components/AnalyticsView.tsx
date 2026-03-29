@@ -19,7 +19,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ data }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'orbitx_analytics.csv';
+    a.download = 'orbitx_mcn_analytics.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

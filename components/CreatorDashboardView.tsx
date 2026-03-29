@@ -205,7 +205,7 @@ const CreatorDashboardView: React.FC<CreatorDashboardViewProps> = ({ creators, a
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
                   <div className="w-16 h-10 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
-                    <img src={`https://picsum.photos/seed/vid${i}/100/60`} alt="Thumbnail" className="w-full h-full object-cover" />
+                    <img src={`https://picsum.photos/seed/vid${i}/100/60`} alt="Thumbnail" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-xs font-bold text-white truncate">Mastering YouTube SEO in 2026</h4>
@@ -226,7 +226,7 @@ const CreatorDashboardView: React.FC<CreatorDashboardViewProps> = ({ creators, a
                 <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-6 h-6 rounded-full bg-gray-600 overflow-hidden">
-                      <img src={`https://picsum.photos/seed/user${i}/30/30`} alt="User" className="w-full h-full object-cover" />
+                      <img src={`https://picsum.photos/seed/user${i}/30/30`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                     <span className="text-[10px] font-bold text-gray-400">@user{i}</span>
                   </div>

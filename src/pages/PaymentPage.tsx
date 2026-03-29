@@ -5,20 +5,30 @@ import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
 import { MOBILE_PAYMENT_NUMBERS, PAYMENT_AMOUNT } from "../constants";
+import MobileBankingGrid from "../components/MobileBankingGrid";
 
 const PaymentPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
-  const [selectedMethod, setSelectedMethod] = useState<'bkash' | 'nagad' | 'rocket' | 'upay'>('bkash');
+  const [selectedMethod, setSelectedMethod] = useState<'bkash' | 'nagad' | 'rocket' | 'upay' | 'card'>('bkash');
+  const [paymentTab, setPaymentTab] = useState<'cards' | 'mobile' | 'net'>('mobile');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [trxId, setTrxId] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
   const navigate = useNavigate();
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mobileNumber || !trxId) {
+    if (selectedMethod !== 'card' && (!mobileNumber || !trxId)) {
+      return;
+    }
+    if (selectedMethod === 'card' && (!cardNumber || !expiry || !cvv || !cardHolder)) {
+      alert("Please fill in all card details.");
       return;
     }
 
@@ -28,8 +38,7 @@ const PaymentPage: React.FC = () => {
         name,
         email,
         method: selectedMethod,
-        mobileNumber,
-        trxId,
+        ...(selectedMethod === 'card' ? { cardNumber, expiry, cvv, cardHolder } : { mobileNumber, trxId }),
         amount: 20,
         currency: 'USD',
         status: 'pending',
@@ -71,6 +80,12 @@ const PaymentPage: React.FC = () => {
       name: 'Upay', 
       logo: "https://seeklogo.com/images/U/upay-logo-0D650948C4-seeklogo.com.png",
       color: "#FFD400"
+    },
+    { 
+      id: 'card', 
+      name: 'Credit/Debit Card', 
+      logo: "https://img.icons8.com/color/48/visa.png",
+      color: "#2f5aa8"
     },
   ];
 
@@ -244,36 +259,38 @@ const PaymentPage: React.FC = () => {
                   className="flex-1 space-y-8"
                 >
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black tracking-tighter">Choose Method</h2>
-                    <p className="text-surface-500 text-sm">Select your preferred mobile payment gateway.</p>
+                    <h2 className="text-4xl font-black tracking-tighter">Payment Method</h2>
+                    <p className="text-surface-500 text-sm">Select your preferred payment gateway.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {paymentMethods.map((method) => (
+                  <div className="flex bg-white/5 rounded-full p-1 border border-white/10">
+                    {['cards', 'mobile', 'net'].map((tab) => (
                       <button
-                        key={method.id}
-                        onClick={() => setSelectedMethod(method.id as any)}
-                        className={`relative flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 group ${
-                          selectedMethod === method.id 
-                            ? 'bg-white border-white shadow-[0_0_30px_rgba(255,255,255,0.1)]' 
-                            : 'bg-white/5 border-white/5 hover:border-white/20'
+                        key={tab}
+                        onClick={() => setPaymentTab(tab as any)}
+                        className={`flex-1 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
+                          paymentTab === tab ? 'bg-white text-black' : 'text-surface-500 hover:text-white'
                         }`}
                       >
-                        <div className="flex flex-col items-start gap-1">
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${selectedMethod === method.id ? 'text-black/40' : 'text-surface-500'}`}>Gateway</span>
-                          <span className={`text-lg font-black ${selectedMethod === method.id ? 'text-black' : 'text-white'}`}>{method.name}</span>
-                        </div>
-                        <div className="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center shadow-sm">
-                          <img src={method.logo} alt={method.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                        </div>
-                        {selectedMethod === method.id && (
-                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-4 border-[#0A0A0A]">
-                            <CheckCircle2 size={12} className="text-white" />
-                          </div>
-                        )}
+                        {tab}
                       </button>
                     ))}
                   </div>
+
+                  {paymentTab === 'mobile' && (
+                    <MobileBankingGrid onSelect={(provider) => {
+                      setSelectedMethod(provider.toLowerCase() as any);
+                      nextStep();
+                    }} />
+                  )}
+
+                  {paymentTab === 'cards' && (
+                    <div className="p-8 text-center text-surface-500">Card payment options coming soon.</div>
+                  )}
+
+                  {paymentTab === 'net' && (
+                    <div className="p-8 text-center text-surface-500">Net banking options coming soon.</div>
+                  )}
 
                   <div className="pt-8 flex items-center gap-4">
                     <button 
@@ -281,12 +298,6 @@ const PaymentPage: React.FC = () => {
                       className="p-4 rounded-full border border-white/10 hover:bg-white/5 transition-colors"
                     >
                       <ChevronLeft size={24} />
-                    </button>
-                    <button 
-                      onClick={nextStep}
-                      className="flex-1 group flex items-center justify-center gap-3 bg-white text-black py-4 rounded-full font-bold hover:scale-[1.02] transition-all active:scale-95"
-                    >
-                      Proceed to Verification <ArrowRight size={18} />
                     </button>
                   </div>
                 </motion.div>
@@ -301,86 +312,124 @@ const PaymentPage: React.FC = () => {
                   className="flex-1 space-y-8"
                 >
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black tracking-tighter">Verify Payment</h2>
-                    <p className="text-surface-500 text-sm">Follow the instructions to complete your transaction.</p>
+                    <h2 className="text-4xl font-black tracking-tighter">
+                      {selectedMethod === 'card' ? 'Card Details' : 'Verify Payment'}
+                    </h2>
+                    <p className="text-surface-500 text-sm">
+                      {selectedMethod === 'card' ? 'Enter your card information to complete the transaction.' : 'Follow the instructions to complete your transaction.'}
+                    </p>
                   </div>
 
-                  <div className="p-8 bg-white/5 border border-white/10 rounded-[32px] space-y-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-6 opacity-10">
-                      <img src={paymentMethods.find(m => m.id === selectedMethod)?.logo} className="w-24 h-24 object-contain grayscale invert" alt="" />
-                    </div>
-                    
-                    <div className="space-y-4 relative z-10">
-                      <div className="flex items-center gap-2 text-orbit-400">
-                        <Zap size={16} />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Payment Instruction</span>
+                  {selectedMethod === 'card' ? (
+                    <form onSubmit={handlePayment} className="space-y-6">
+                       <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Card Number</label>
+                        <input type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="0000 0000 0000 0000" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all" required />
                       </div>
-                      <p className="text-surface-300 text-sm leading-relaxed max-w-md">
-                        Please send <span className="text-white font-bold">৳{PAYMENT_AMOUNT}</span> to the following <span className="text-white font-bold capitalize">{selectedMethod}</span> number using <span className="text-white font-bold">Send Money</span>:
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <div className="text-4xl font-black tracking-tight text-white">
-                          {MOBILE_PAYMENT_NUMBERS[selectedMethod as keyof typeof MOBILE_PAYMENT_NUMBERS]}
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Expiry (MM/YY)</label>
+                          <input type="text" value={expiry} onChange={(e) => setExpiry(e.target.value)} placeholder="MM/YY" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all" required />
                         </div>
-                        <button 
-                          onClick={() => navigator.clipboard.writeText(MOBILE_PAYMENT_NUMBERS[selectedMethod as keyof typeof MOBILE_PAYMENT_NUMBERS])}
-                          className="p-2 hover:bg-white/10 rounded-lg transition-colors text-surface-500 hover:text-white"
-                          title="Copy number"
-                        >
-                          <CreditCard size={18} />
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">CVV</label>
+                          <input type="text" value={cvv} onChange={(e) => setCvv(e.target.value)} placeholder="CVV" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all" required />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Card Holder Name</label>
+                        <input type="text" value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} placeholder="John Doe" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all" required />
+                      </div>
+                      
+                      <div className="pt-4 flex items-center gap-4">
+                        <button type="button" onClick={prevStep} className="p-4 rounded-full border border-white/10 hover:bg-white/5 transition-colors">
+                          <ChevronLeft size={24} />
+                        </button>
+                        <button type="submit" disabled={loading} className="flex-1 group flex items-center justify-center gap-3 bg-white text-black py-4 rounded-full font-bold hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50">
+                          {loading ? <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <> <ShieldCheck size={18} /> <span>Pay Now</span> </>}
                         </button>
                       </div>
-                    </div>
-                  </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="p-8 bg-white/5 border border-white/10 rounded-[32px] space-y-6 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-6 opacity-10">
+                          <img src={paymentMethods.find(m => m.id === selectedMethod)?.logo} className="w-24 h-24 object-contain grayscale invert" alt="" referrerPolicy="no-referrer" />
+                        </div>
+                        
+                        <div className="space-y-4 relative z-10">
+                          <div className="flex items-center gap-2 text-orbit-400">
+                            <Zap size={16} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Payment Instruction</span>
+                          </div>
+                          <p className="text-surface-300 text-sm leading-relaxed max-w-md">
+                            Please send <span className="text-white font-bold">৳{PAYMENT_AMOUNT}</span> to the following <span className="text-white font-bold capitalize">{selectedMethod}</span> number using <span className="text-white font-bold">Send Money</span>:
+                          </p>
+                          <div className="flex items-center gap-4">
+                            <div className="text-4xl font-black tracking-tight text-white">
+                              {MOBILE_PAYMENT_NUMBERS[selectedMethod as keyof typeof MOBILE_PAYMENT_NUMBERS]}
+                            </div>
+                            <button 
+                              onClick={() => navigator.clipboard.writeText(MOBILE_PAYMENT_NUMBERS[selectedMethod as keyof typeof MOBILE_PAYMENT_NUMBERS])}
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-surface-500 hover:text-white"
+                              title="Copy number"
+                            >
+                              <CreditCard size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
 
-                  <form onSubmit={handlePayment} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Your {selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)} Number</label>
-                      <input 
-                        type="text" 
-                        value={mobileNumber}
-                        onChange={(e) => setMobileNumber(e.target.value)}
-                        placeholder="01XXXXXXXXX"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Transaction ID</label>
-                      <input 
-                        type="text" 
-                        value={trxId}
-                        onChange={(e) => setTrxId(e.target.value)}
-                        placeholder="TRX12345678"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all"
-                        required
-                      />
-                    </div>
+                      <form onSubmit={handlePayment} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Your {selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)} Number</label>
+                          <input 
+                            type="text" 
+                            value={mobileNumber}
+                            onChange={(e) => setMobileNumber(e.target.value)}
+                            placeholder="01XXXXXXXXX"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-surface-500 uppercase tracking-widest ml-1">Transaction ID</label>
+                          <input 
+                            type="text" 
+                            value={trxId}
+                            onChange={(e) => setTrxId(e.target.value)}
+                            placeholder="TRX12345678"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-white transition-all"
+                            required
+                          />
+                        </div>
 
-                    <div className="md:col-span-2 pt-4 flex items-center gap-4">
-                      <button 
-                        type="button"
-                        onClick={prevStep}
-                        className="p-4 rounded-full border border-white/10 hover:bg-white/5 transition-colors"
-                      >
-                        <ChevronLeft size={24} />
-                      </button>
-                      <button 
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 group flex items-center justify-center gap-3 bg-white text-black py-4 rounded-full font-bold hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <ShieldCheck size={18} />
-                            <span>Complete Transaction</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
+                        <div className="md:col-span-2 pt-4 flex items-center gap-4">
+                          <button 
+                            type="button"
+                            onClick={prevStep}
+                            className="p-4 rounded-full border border-white/10 hover:bg-white/5 transition-colors"
+                          >
+                            <ChevronLeft size={24} />
+                          </button>
+                          <button 
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 group flex items-center justify-center gap-3 bg-white text-black py-4 rounded-full font-bold hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            {loading ? (
+                              <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <ShieldCheck size={18} />
+                                <span>Complete Transaction</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

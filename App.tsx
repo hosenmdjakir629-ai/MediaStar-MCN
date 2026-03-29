@@ -545,7 +545,7 @@ const App: React.FC = () => {
                 </div>
                 <div className="w-10 h-10 rounded-full orbit-gradient p-[2px] relative group cursor-pointer shadow-lg shadow-orbit-500/20">
                    <div className="w-full h-full bg-surface-950 rounded-full overflow-hidden">
-                      <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" loading="lazy" decoding="async" />
+                      <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=admin"} alt="Admin" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                    </div>
                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full backdrop-blur-[1px] opacity-0 hover:opacity-100 transition-opacity" onClick={handleLogout}>
                          <LogOut size={16} className="text-white" />

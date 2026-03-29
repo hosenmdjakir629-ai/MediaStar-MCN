@@ -45,6 +45,7 @@ const CreatorSubmitForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submission started");
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
@@ -59,10 +60,12 @@ const CreatorSubmitForm: React.FC = () => {
       
       // 0. Upload ZIP file if exists
       if (zipFile) {
+        console.log("Uploading ZIP file...");
         try {
           const storageRef = ref(storage, `applications/${Date.now()}_${zipFile.name}`);
           const snapshot = await uploadBytes(storageRef, zipFile);
           zipUrl = await getDownloadURL(snapshot.ref);
+          console.log("ZIP file uploaded:", zipUrl);
         } catch (error) {
           console.error('Error uploading file:', error);
           // Continue without file if upload fails, or handle error
@@ -70,7 +73,6 @@ const CreatorSubmitForm: React.FC = () => {
       }
 
       const formattedMessage = `Creator Application
-
 Name: ${formData.name}
 Email: ${formData.email}
 Channel Url: ${formData.channel}
@@ -79,6 +81,7 @@ Niche: ${formData.niche}
 Message: ${formData.message}`;
 
       // 1. Add to notifications for admin alert
+      console.log("Adding to notifications...");
       try {
         await addDoc(collection(db, 'notifications'), {
           name: formData.name,
@@ -94,11 +97,14 @@ Message: ${formData.message}`;
           status: 'unread',
           timestamp: new Date().toISOString()
         });
+        console.log("Added to notifications");
       } catch (error) {
+        console.error("Error adding to notifications:", error);
         handleFirestoreError(error, OperationType.CREATE, 'notifications');
       }
 
       // 2. Add to creators collection with Pending status (PHP script logic)
+      console.log("Adding to creators...");
       try {
         await addDoc(collection(db, 'creators'), {
           name: formData.name,
@@ -118,11 +124,14 @@ Message: ${formData.message}`;
           isVerified: false,
           lastSynced: new Date().toISOString()
         });
+        console.log("Added to creators");
       } catch (error) {
+        console.error("Error adding to creators:", error);
         handleFirestoreError(error, OperationType.CREATE, 'creators');
       }
 
       // 3. Send Email via EmailJS
+      console.log("Sending email...");
       try {
         await emailjs.send(
           "service_5x5e82j",
@@ -137,6 +146,7 @@ Message: ${formData.message}`;
           },
           "623oC0hN3jCe4EkfW"
         );
+        console.log("Email sent");
       } catch (error) {
         console.error('EmailJS Error:', error);
         // Optionally handle email failure (e.g. log it but don't fail the whole submission)
@@ -153,6 +163,7 @@ Message: ${formData.message}`;
       });
       setZipFile(null);
       setTimeout(() => setFormStatus('idle'), 3000);
+      console.log("Form submission successful");
     } catch (error: any) {
       console.error('Error submitting application:', error);
       setFormStatus('idle');

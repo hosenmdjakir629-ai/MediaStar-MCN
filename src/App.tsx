@@ -21,26 +21,50 @@ import {
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
+  Trash2,
+  BarChart3,
+  TrendingUp,
   X,
   LogIn,
   LogOut,
-  Mail
+  Mail,
+  Search,
+  Play
 } from 'lucide-react';
-import { auth, db, googleProvider, signInWithPopup, signOut, sendEmailVerification } from './firebase';
+import { 
+  auth, 
+  db, 
+  googleProvider, 
+  signInWithPopup, 
+  signOut, 
+  sendEmailVerification,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, serverTimestamp, collection, getDocs, updateDoc, onSnapshot, query, orderBy, where, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { storage } from './firebase';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
+  const [youtubeStats, setYoutubeStats] = useState<any>(null);
+  const [latestVideos, setLatestVideos] = useState<any[]>([]);
+  const [isYoutubeStatsLoading, setIsYoutubeStatsLoading] = useState(false);
+  const [youtubeError, setYoutubeError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   
   // Creators state
   const [creators, setCreators] = useState<any[]>([]);
   const [isCreatorsLoading, setIsCreatorsLoading] = useState(false);
   const [editingCreator, setEditingCreator] = useState<any>(null);
+  const [editingVideo, setEditingVideo] = useState<any>(null);
   const [isUpdatingCreator, setIsUpdatingCreator] = useState(false);
 
   // Applications state
@@ -53,20 +77,89 @@ function App() {
   const [earnings, setEarnings] = useState<any[]>([]);
   const [isEarningsLoading, setIsEarningsLoading] = useState(false);
   const [earningsFilters, setEarningsFilters] = useState({ month: '', creatorId: '' });
+
+  // Payouts state
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [isPayoutsLoading, setIsPayoutsLoading] = useState(false);
+  const [payoutFilters, setPayoutFilters] = useState({ status: '', creatorId: '' });
+  const [showCreatePayoutModal, setShowCreatePayoutModal] = useState(false);
+  const [newPayout, setNewPayout] = useState({ creatorId: '', amount: '', method: 'Bank Transfer', reference: '' });
+  const [isCreatingPayout, setIsCreatingPayout] = useState(false);
   
   // Invite form state
   const [inviteForm, setInviteForm] = useState({ channelName: '', email: '', message: '' });
   const [isInviting, setIsInviting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
+  // Users state (for admin management)
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [isUsersLoading, setIsUsersLoading] = useState(false);
+
+  // Channels state
+  const [channels, setChannels] = useState<any[]>([]);
+  const [isChannelsLoading, setIsChannelsLoading] = useState(false);
+
+  // Creator Profile State
+  const [creatorProfile, setCreatorProfile] = useState<any>(null);
+
+  // Video Upload State
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [blockedCountries, setBlockedCountries] = useState('');
+  const [isMonetized, setIsMonetized] = useState(true);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  // Video Analytics State
+  const [videoAnalytics, setVideoAnalytics] = useState<any>(null);
+  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<any>(null);
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+
   // Manual Claim Modal State
   const [showManualClaimModal, setShowManualClaimModal] = useState(false);
-  const [manualClaimForm, setManualClaimForm] = useState({ videoUrl: '', claimant: '', matchType: 'visual', description: '' });
+  const [manualClaimForm, setManualClaimForm] = useState({ videoUrl: '', claimant: '', matchType: 'visual', description: '', contentId: '' });
 
   // Selected Claim State
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
   const [claimDetailsTab, setClaimDetailsTab] = useState<'overview' | 'history'>('overview');
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, actionType: 'release' | 'reinstate' | null}>({isOpen: false, actionType: null});
+
+  // Email/Password Auth State
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+
+  // Role Helpers
+  const isAdmin = userProfile?.role === 'admin';
+  const isEditor = userProfile?.role === 'editor';
+  const isStaff = isAdmin || isEditor;
+  const isCreator = userProfile?.role === 'creator';
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setYoutubeError(null);
+    try {
+      const response = await fetch(`/api/youtube/search/${encodeURIComponent(searchQuery)}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setLatestVideos(data);
+        setActiveTab('dashboard'); // Switch to dashboard to show results
+      } else if (data.error) {
+        setYoutubeError(data.error);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      setYoutubeError("Search failed. Please check your network connection.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -103,11 +196,75 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let unsubscribeUsers: (() => void) | undefined;
+    if (user && isAdmin) {
+      setIsUsersLoading(true);
+      const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+        const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllUsers(usersList);
+        setIsUsersLoading(false);
+      }, (error) => {
+        console.error("Error fetching users:", error);
+        setIsUsersLoading(false);
+      });
+    }
+
+    // Fetch claims
+    let unsubscribeClaims: (() => void) | undefined;
+    if (user && isStaff) {
+      setIsClaimsLoading(true);
+      const claimsQuery = query(collection(db, 'claims'), orderBy('date', 'desc'));
+      unsubscribeClaims = onSnapshot(claimsQuery, (snapshot) => {
+        const claimsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setClaims(claimsList);
+        setIsClaimsLoading(false);
+      }, (error) => {
+        console.error("Error fetching claims:", error);
+        setIsClaimsLoading(false);
+      });
+    }
+
+    return () => {
+      if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribeClaims) unsubscribeClaims();
+    };
+  }, [user, isAdmin, isStaff]);
+
+  useEffect(() => {
     if (user && (user.emailVerified || userProfile?.role !== 'admin')) {
       fetch('/api/admin/stats')
         .then(res => res.json())
         .then(data => setStats(data))
         .catch(err => console.error(err));
+
+      setIsYoutubeStatsLoading(true);
+      setYoutubeError(null);
+      fetch('/api/youtube/stats')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setYoutubeStats(data.data);
+          } else {
+            setYoutubeError(data.message || 'Failed to fetch YouTube stats');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          setYoutubeError('Network error while fetching YouTube stats');
+        });
+
+      fetch('/api/youtube/videos')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setLatestVideos(data);
+          } else if (data.error) {
+            setYoutubeError(prev => prev || data.error);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setIsYoutubeStatsLoading(false));
     }
   }, [user, userProfile]);
 
@@ -168,6 +325,25 @@ function App() {
     }
   }, [user, activeTab]);
 
+  useEffect(() => {
+    if (user && activeTab === 'payouts') {
+      setIsPayoutsLoading(true);
+      const q = query(collection(db, 'payouts'), orderBy('timestamp', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const payoutsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setPayouts(payoutsData);
+        setIsPayoutsLoading(false);
+      }, (error) => {
+        console.error("Error fetching payouts:", error);
+        setIsPayoutsLoading(false);
+      });
+      return () => unsubscribe();
+    }
+  }, [user, activeTab]);
+
   const platformTools = [
     { id: 'video-distribution', title: 'Video Distribution', description: 'Distribute your videos across YouTube and Facebook', icon: Video, badge: null, color: 'text-red-500', bg: 'bg-red-50' },
     { id: 'audio-distribution', title: 'Audio Distribution', description: 'Share your music on 40+ platforms', icon: Music, badge: '+35', color: 'text-sky-500', bg: 'bg-sky-50' },
@@ -179,21 +355,56 @@ function App() {
     { id: 'finance-management', title: 'Finance Management', description: 'Track earnings and payments', icon: DollarSign, badge: null, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
-  const initialClaims = [
-    { id: 'v_98x2mP1', title: 'Top 10 Tech Gadgets 2026', claimant: 'TechReviews Daily', matchType: 'Visual match (0:45 - 1:12)', status: 'Active', date: 'Apr 08, 2026', deadline: 'Apr 15, 2026', notes: 'Automated visual match detected by Content ID system. Awaiting claimant review.', statusColor: 'bg-emerald-100 text-emerald-700', history: [
-      { id: 2, date: 'Apr 08, 2026 11:15 AM', action: 'Notification sent to uploader', user: 'System' },
-      { id: 1, date: 'Apr 08, 2026 10:30 AM', action: 'Claim automatically generated by Content ID', user: 'System' }
-    ] },
-    { id: 'v_45k9Lq2', title: 'My Setup Tour', claimant: 'GamerZone', matchType: 'Audio match (2:10 - 2:40)', status: 'Disputed', date: 'Apr 05, 2026', deadline: 'Apr 12, 2026', notes: 'Uploader disputes the claim citing fair use. Review required within 30 days.', statusColor: 'bg-amber-100 text-amber-700', history: [
-      { id: 2, date: 'Apr 07, 2026 02:45 PM', action: 'Uploader filed a dispute (Reason: Fair Use)', user: 'GamerZone' },
-      { id: 1, date: 'Apr 05, 2026 09:00 AM', action: 'Claim automatically generated by Content ID', user: 'System' }
-    ] },
-    { id: 'v_72m4Np8', title: 'Vlog #45: Trip to Bali', claimant: 'TravelWithMe', matchType: 'Melody match (0:15 - 0:30)', status: 'Released', date: 'Apr 01, 2026', deadline: null, notes: 'Claim released manually by claimant after reviewing the context.', statusColor: 'bg-slate-100 text-slate-700', history: [
-      { id: 2, date: 'Apr 03, 2026 11:30 AM', action: 'Claim manually released', user: 'Admin (AD)' },
-      { id: 1, date: 'Apr 01, 2026 04:20 PM', action: 'Claim automatically generated by Content ID', user: 'System' }
-    ] },
-  ];
-  const [claims, setClaims] = useState(initialClaims);
+  // Copyright state
+  const [claims, setClaims] = useState<any[]>([]);
+  const [isClaimsLoading, setIsClaimsLoading] = useState(false);
+
+  // Automated Copyright Notifications
+  useEffect(() => {
+    if (!isStaff || claims.length === 0) return;
+
+    const unnotifiedClaims = claims.filter(c => c.notified === false);
+    
+    unnotifiedClaims.forEach(async (claim) => {
+      // Find creator email
+      const creator = creators.find(cre => cre.id === claim.creatorId || cre.channelName === claim.claimant);
+      const email = creator?.email || 'creator@example.com';
+      const name = creator?.name || 'Creator';
+
+      try {
+        console.log(`Automating notification for claim: ${claim.id}`);
+        const response = await fetch('/api/notify/copyright', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            name,
+            videoTitle: claim.title,
+            claimant: claim.claimant,
+            matchType: claim.matchType
+          })
+        });
+
+        if (response.ok) {
+          // Update claim as notified in Firestore
+          await updateDoc(doc(db, 'claims', claim.id), {
+            notified: true,
+            history: [
+              { 
+                id: Date.now(), 
+                date: new Date().toLocaleString(), 
+                action: 'Automated notification sent to creator', 
+                user: 'System' 
+              },
+              ...(claim.history || [])
+            ]
+          });
+        }
+      } catch (error) {
+        console.error("Failed to send automated notification:", error);
+      }
+    });
+  }, [claims, creators, isStaff]);
   
   const isDeadlineClose = (deadline: string | null) => {
     if (!deadline) return false;
@@ -235,7 +446,7 @@ function App() {
     console.log("Submitting manual claim:", manualClaimForm);
     alert("Manual claim submitted successfully!");
     setShowManualClaimModal(false);
-    setManualClaimForm({ videoUrl: '', claimant: '', matchType: 'visual', description: '' });
+    setManualClaimForm({ videoUrl: '', claimant: '', matchType: 'visual', description: '', contentId: '' });
   };
 
   const handleLogin = async () => {
@@ -243,6 +454,41 @@ function App() {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Login failed:", error);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setIsProcessingAuth(true);
+
+    try {
+      if (authMode === 'signup') {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName });
+        
+        // Create user profile in Firestore
+        const newProfile = {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          name: displayName,
+          photoURL: null,
+          role: userCredential.user.email === 'hosenmdjakir629@gmail.com' ? 'admin' : 'creator',
+          createdAt: serverTimestamp()
+        };
+        await setDoc(doc(db, 'users', userCredential.user.uid), newProfile);
+        setUserProfile(newProfile);
+        
+        await sendEmailVerification(userCredential.user);
+        alert("Account created! A verification email has been sent to your inbox.");
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      setAuthError(error.message || "An error occurred during authentication.");
+    } finally {
+      setIsProcessingAuth(false);
     }
   };
 
@@ -266,6 +512,201 @@ function App() {
     }
   };
 
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    if (!isAdmin) return;
+    try {
+      await updateDoc(doc(db, 'users', userId), { role: newRole });
+      alert(`User role updated to ${newRole}`);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      alert("Failed to update user role.");
+    }
+  };
+
+  // Creator Profile & Video Upload Logic
+  useEffect(() => {
+    if (user && isCreator) {
+      const q = query(collection(db, 'creators'), where('uid', '==', user.uid));
+      const unsubscribe = onSnapshot(q, async (snapshot) => {
+        if (!snapshot.empty) {
+          setCreatorProfile({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+        } else {
+          // If no creator profile exists for this user, create one
+          try {
+            const newCreator = {
+              uid: user.uid,
+              name: user.displayName || 'New Creator',
+              email: user.email,
+              status: 'Pending',
+              createdAt: serverTimestamp(),
+              videos: []
+            };
+            const docRef = await addDoc(collection(db, 'creators'), newCreator);
+            setCreatorProfile({ id: docRef.id, ...newCreator });
+          } catch (error) {
+            console.error("Error creating creator profile:", error);
+          }
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [user, isCreator]);
+
+  const handleVideoUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoFile || !user || !creatorProfile) return;
+
+    setIsUploadingVideo(true);
+    setUploadProgress(0);
+
+    try {
+      const videoId = Date.now().toString();
+      
+      // Upload Video
+      const videoStorageRef = ref(storage, `videos/${user.uid}/${videoId}_${videoFile.name}`);
+      const videoUploadTask = uploadBytesResumable(videoStorageRef, videoFile);
+
+      // Upload Thumbnail if provided
+      let thumbnailUrl = '';
+      if (thumbnailFile) {
+        const thumbnailStorageRef = ref(storage, `thumbnails/${user.uid}/${videoId}_${thumbnailFile.name}`);
+        const thumbnailUploadTask = await uploadBytesResumable(thumbnailStorageRef, thumbnailFile);
+        thumbnailUrl = await getDownloadURL(thumbnailUploadTask.ref);
+      }
+
+      videoUploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        }, 
+        (error) => {
+          console.error("Upload failed:", error);
+          alert("Video upload failed: " + error.message);
+          setIsUploadingVideo(false);
+        }, 
+        async () => {
+          const downloadURL = await getDownloadURL(videoUploadTask.snapshot.ref);
+          
+          const videoData = {
+            id: videoId,
+            title: videoTitle || videoFile.name,
+            url: downloadURL,
+            thumbnailUrl: thumbnailUrl,
+            blockedCountries: blockedCountries.split(',').map(c => c.trim()).filter(c => c !== ''),
+            isMonetized,
+            uploadedAt: new Date().toISOString(),
+            size: videoFile.size,
+            status: 'Ready'
+          };
+
+          try {
+            await updateDoc(doc(db, 'creators', creatorProfile.id), {
+              videos: arrayUnion(videoData)
+            });
+
+            // Initialize analytics for the new video
+            await addDoc(collection(db, 'videoAnalytics'), {
+              videoId: videoId,
+              creatorId: user.uid,
+              views: 0,
+              watchTime: 0,
+              likes: 0,
+              lastUpdated: new Date().toISOString()
+            });
+
+            setVideoFile(null);
+            setThumbnailFile(null);
+            setVideoTitle('');
+            setBlockedCountries('');
+            setIsMonetized(true);
+            setUploadProgress(0);
+            alert("Video uploaded successfully!");
+          } catch (error) {
+            console.error("Error updating creator profile:", error);
+            alert("Failed to update profile with video info.");
+          } finally {
+            setIsUploadingVideo(false);
+          }
+        }
+      );
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert("An error occurred during upload: " + error.message);
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const fetchVideoAnalytics = async (video: any) => {
+    if (!user) return;
+    setIsAnalyticsLoading(true);
+    setSelectedVideoForAnalytics(video);
+    
+    try {
+      const q = query(
+        collection(db, 'videoAnalytics'), 
+        where('videoId', '==', video.id)
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        setVideoAnalytics(snapshot.docs[0].data());
+      } else {
+        // Initialize analytics if not found (for demo/fallback)
+        const initialAnalytics = {
+          videoId: video.id,
+          creatorId: user.uid,
+          views: Math.floor(Math.random() * 5000) + 100,
+          watchTime: Math.floor(Math.random() * 200) + 10,
+          likes: Math.floor(Math.random() * 300) + 20,
+          lastUpdated: new Date().toISOString()
+        };
+        await addDoc(collection(db, 'videoAnalytics'), initialAnalytics);
+        setVideoAnalytics(initialAnalytics);
+      }
+    } catch (error) {
+      console.error("Error fetching video analytics:", error);
+    } finally {
+      setIsAnalyticsLoading(false);
+    }
+  };
+
+  const handleDeleteVideo = async (video: any) => {
+    if (!user || !creatorProfile) return;
+    
+    if (!window.confirm(`Are you sure you want to delete "${video.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // 1. Delete from Storage
+      // We can use ref(storage, url) to get the reference from the download URL
+      const videoRef = ref(storage, video.url);
+      await deleteObject(videoRef);
+
+      // 2. Remove from Firestore
+      await updateDoc(doc(db, 'creators', creatorProfile.id), {
+        videos: arrayRemove(video)
+      });
+
+      alert("Video deleted successfully.");
+    } catch (error: any) {
+      console.error("Error deleting video:", error);
+      // If the file doesn't exist in storage, we should still try to remove it from Firestore
+      if (error.code === 'storage/object-not-found') {
+        try {
+          await updateDoc(doc(db, 'creators', creatorProfile.id), {
+            videos: arrayRemove(video)
+          });
+          alert("Video record removed (file was not found in storage).");
+          return;
+        } catch (fsError) {
+          console.error("Error removing record from Firestore:", fsError);
+        }
+      }
+      alert("Failed to delete video: " + error.message);
+    }
+  };
+
   const handleUpdateCreator = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCreator) return;
@@ -274,12 +715,13 @@ function App() {
     try {
       const creatorRef = doc(db, 'creators', editingCreator.id);
       await updateDoc(creatorRef, {
-        name: editingCreator.name,
-        channelName: editingCreator.channelName,
-        subscribers: Number(editingCreator.subscribers),
-        status: editingCreator.status,
-        niche: editingCreator.niche,
-        revenue: Number(editingCreator.revenue),
+        name: editingCreator.name || '',
+        channelName: editingCreator.channelName || '',
+        subscribers: Number(editingCreator.subscribers) || 0,
+        status: editingCreator.status || 'Pending',
+        niche: editingCreator.niche || '',
+        revenue: Number(editingCreator.revenue) || 0,
+        adminNotes: editingCreator.adminNotes || '',
         updatedAt: serverTimestamp()
       });
       setEditingCreator(null);
@@ -292,6 +734,25 @@ function App() {
     }
   };
 
+  const handleUpdateVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVideo || !creatorProfile) return;
+    try {
+      const creatorRef = doc(db, 'creators', creatorProfile.id);
+      const updatedVideos = creatorProfile.videos.map((v: any) => 
+        v.id === editingVideo.id ? editingVideo : v
+      );
+      await updateDoc(creatorRef, {
+        videos: updatedVideos
+      });
+      setCreatorProfile({...creatorProfile, videos: updatedVideos});
+      setEditingVideo(null);
+      alert("Video updated successfully!");
+    } catch (error) {
+      console.error("Error updating video:", error);
+      alert("Failed to update video.");
+    }
+  };
   const handleUpdateApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewingApplication) return;
@@ -305,13 +766,152 @@ function App() {
         reviewedAt: serverTimestamp(),
         reviewedBy: user?.uid
       });
+
+      // Send email notification
+      try {
+        await fetch('/api/notify/application', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: reviewingApplication.name,
+            email: reviewingApplication.email,
+            channelName: reviewingApplication.channelName,
+            status: reviewingApplication.status,
+            adminNotes: reviewingApplication.adminNotes
+          })
+        });
+      } catch (notifyError) {
+        console.error("Failed to send notification:", notifyError);
+      }
+
       setReviewingApplication(null);
-      alert("Application updated successfully!");
+      alert("Application updated and notification sent!");
     } catch (error) {
       console.error("Error updating application:", error);
       alert("Failed to update application.");
     } finally {
       setIsUpdatingApplication(false);
+    }
+  };
+
+  const handleCreatePayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPayout.creatorId || !newPayout.amount) return;
+
+    setIsCreatingPayout(true);
+    try {
+      await setDoc(doc(collection(db, 'payouts')), {
+        ...newPayout,
+        amount: Number(newPayout.amount),
+        status: 'Pending',
+        timestamp: serverTimestamp(),
+        createdBy: user?.uid
+      });
+
+      // Send email notification to creator
+      const creator = creators.find(c => c.id === newPayout.creatorId);
+      if (creator && creator.email) {
+        try {
+          await fetch('/api/notify/payout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: creator.email,
+              name: creator.name,
+              amount: newPayout.amount,
+              method: newPayout.method,
+              status: 'Pending',
+              reference: newPayout.reference
+            })
+          });
+        } catch (notifyError) {
+          console.error("Failed to send notification:", notifyError);
+        }
+      }
+
+      setShowCreatePayoutModal(false);
+      setNewPayout({ creatorId: '', amount: '', method: 'Bank Transfer', reference: '' });
+      alert("Payout record created and notification sent!");
+    } catch (error) {
+      console.error("Error creating payout:", error);
+      alert("Failed to create payout record.");
+    } finally {
+      setIsCreatingPayout(false);
+    }
+  };
+
+  const handleNotifyCopyright = async (claim: any) => {
+    // For demo purposes, we'll use a placeholder email if not found
+    const creator = creators.find(c => c.id === claim.creatorId || c.channelName === claim.claimant);
+    const creatorEmail = creator?.email || 'creator@example.com';
+    const creatorName = creator?.name || 'Creator';
+    
+    try {
+      const response = await fetch('/api/notify/copyright', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: creatorEmail,
+          name: creatorName,
+          videoTitle: claim.title,
+          claimant: claim.claimant,
+          matchType: claim.matchType
+        })
+      });
+      if (response.ok) {
+        // Update claim as notified in Firestore if it wasn't already
+        if (!claim.notified) {
+          await updateDoc(doc(db, 'claims', claim.id), {
+            notified: true,
+            history: [
+              { 
+                id: Date.now(), 
+                date: new Date().toLocaleString(), 
+                action: 'Manual notification sent to creator', 
+                user: 'Admin (AD)' 
+              },
+              ...(claim.history || [])
+            ]
+          });
+        }
+        alert("Copyright notification sent to creator!");
+      } else {
+        throw new Error("Failed to send notification");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to send notification.");
+    }
+  };
+
+  const handleSimulateDetection = async () => {
+    if (!isStaff) return;
+    
+    const randomCreator = creators[Math.floor(Math.random() * creators.length)] || { id: 'test-creator', name: 'Test Creator', channelName: 'Test Channel' };
+    const claimId = `v_${Math.random().toString(36).substr(2, 7)}`;
+    const newClaim = {
+      id: claimId,
+      title: `New Video ${Math.floor(Math.random() * 100)}`,
+      claimant: 'Copyright Holder Inc.',
+      matchType: 'Audio match (1:00 - 1:30)',
+      status: 'Active',
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      notes: 'Automatically detected by OrbitX Content ID Simulation.',
+      statusColor: 'bg-emerald-100 text-emerald-700',
+      notified: false,
+      creatorId: randomCreator.id,
+      history: [
+        { id: 1, date: new Date().toLocaleString(), action: 'Claim automatically generated by Content ID Simulation', user: 'System' }
+      ]
+    };
+
+    try {
+      await setDoc(doc(db, 'claims', claimId), newClaim);
+      alert("New copyright claim detected and added to system. Automation will now process the notification.");
+    } catch (error) {
+      console.error("Error simulating detection:", error);
+      alert("Failed to simulate detection.");
     }
   };
 
@@ -328,20 +928,95 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://picsum.photos/seed/orbitx/1920/1080?blur=10')] bg-cover bg-center">
+        <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 p-8 text-center">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg mx-auto mb-6">
             O
           </div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">OrbitX Admin</h1>
-          <p className="text-slate-600 mb-8">Sign in to manage your MCN dashboard and creators.</p>
+          <p className="text-slate-600 mb-8">
+            {authMode === 'login' ? 'Sign in to manage your MCN dashboard.' : 'Create an account to join OrbitX MCN.'}
+          </p>
+
+          <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
+            {authMode === 'signup' && (
+              <div>
+                <input 
+                  type="text" 
+                  placeholder="Full Name" 
+                  required 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                />
+              </div>
+            )}
+            <div>
+              <input 
+                type="email" 
+                placeholder="Email Address" 
+                required 
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <input 
+                type="password" 
+                placeholder="Password" 
+                required 
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            
+            {authError && (
+              <p className="text-xs text-red-600 font-medium bg-red-50 p-2 rounded-lg border border-red-100">
+                {authError}
+              </p>
+            )}
+
+            <button 
+              type="submit"
+              disabled={isProcessingAuth}
+              className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
+            >
+              {isProcessingAuth && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+              {authMode === 'login' ? 'Sign In' : 'Create Account'}
+            </button>
+          </form>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-slate-500 font-semibold">Or continue with</span>
+            </div>
+          </div>
+
           <button 
             onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 text-slate-700 font-semibold py-3 px-6 rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-sm"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 text-slate-700 font-semibold py-3 px-6 rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-sm mb-6"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-            Sign in with Google
+            Google
           </button>
+
+          <p className="text-sm text-slate-600">
+            {authMode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
+            <button 
+              onClick={() => {
+                setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                setAuthError(null);
+              }}
+              className="text-indigo-600 font-bold hover:underline"
+            >
+              {authMode === 'login' ? 'Sign Up' : 'Log In'}
+            </button>
+          </p>
         </div>
       </div>
     );
@@ -350,7 +1025,7 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Verification Banner */}
-      {user && !user.emailVerified && userProfile?.role === 'admin' && (
+      {user && !user.emailVerified && isStaff && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">
@@ -394,6 +1069,13 @@ function App() {
             Creators
           </button>
           <button 
+            onClick={() => setActiveTab('channels')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'channels' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <Video className="w-5 h-5 mr-3" />
+            Channels
+          </button>
+          <button 
             onClick={() => setActiveTab('applications')}
             className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'applications' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
           >
@@ -421,20 +1103,40 @@ function App() {
             <Copyright className="w-5 h-5 mr-3" />
             Copyright Tools
           </button>
-          <button 
-            onClick={() => setActiveTab('earnings')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'earnings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <DollarSign className="w-5 h-5 mr-3" />
-            Earnings
-          </button>
-          <button 
-            onClick={() => setActiveTab('logs')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'logs' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <Activity className="w-5 h-5 mr-3" />
-            System Logs
-          </button>
+          {isAdmin && (
+            <>
+              <button 
+                onClick={() => setActiveTab('earnings')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'earnings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <DollarSign className="w-5 h-5 mr-3" />
+                Earnings
+              </button>
+              <button 
+                onClick={() => setActiveTab('payouts')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'payouts' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <LogIn className="w-5 h-5 mr-3 rotate-90" />
+                Payouts
+              </button>
+              <button 
+                onClick={() => setActiveTab('logs')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'logs' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Activity className="w-5 h-5 mr-3" />
+                System Logs
+              </button>
+            </>
+          )}
+          {isCreator && (
+            <button 
+              onClick={() => setActiveTab('videos')}
+              className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'videos' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <Video className="w-5 h-5 mr-3" />
+              My Videos
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab('settings')}
             className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'settings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
@@ -473,6 +1175,23 @@ function App() {
           <h2 className="text-xl font-semibold text-slate-800 capitalize tracking-tight">
             {activeTab === 'tools' ? 'Platform Tools' : activeTab.replace(/-/g, ' ')}
           </h2>
+          <div className="flex-1 max-w-md mx-8">
+            <form onSubmit={handleSearch} className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search YouTube content..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all"
+              />
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </form>
+          </div>
           <div className="flex items-center gap-5">
             <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors relative">
               <Bell className="w-5 h-5" />
@@ -486,7 +1205,7 @@ function App() {
 
         {/* Content Area */}
         <div className="p-8 flex-1 overflow-auto">
-          {user && !user.emailVerified && userProfile?.role === 'admin' ? (
+          {user && !user.emailVerified && isStaff ? (
             <div className="max-w-2xl mx-auto mt-12 text-center">
               <div className="w-20 h-20 bg-amber-100 rounded-3xl flex items-center justify-center text-amber-600 mx-auto mb-6">
                 <ShieldAlert className="w-10 h-10" />
@@ -540,6 +1259,123 @@ function App() {
                   </div>
                 </div>
               </div>
+
+              {youtubeError && (
+                <div className="mt-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-red-900">YouTube API Error (403 Forbidden)</h3>
+                    <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                      {youtubeError}. This usually means your API key is invalid, the YouTube Data API is not enabled in your Google Cloud Console, or there are IP/Referrer restrictions on the key.
+                    </p>
+                    <div className="mt-3 flex gap-3">
+                      <a 
+                        href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase tracking-wider underline"
+                      >
+                        Enable API
+                      </a>
+                      <a 
+                        href="https://console.cloud.google.com/apis/credentials" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase tracking-wider underline"
+                      >
+                        Check Credentials
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {youtubeStats && (
+                <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                        <img src={youtubeStats.thumbnails?.default?.url} alt={youtubeStats.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900 tracking-tight">{youtubeStats.title}</h3>
+                        <p className="text-xs text-slate-500 font-medium">Primary Network Channel</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-full border border-red-100">
+                      <Video className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">YouTube Live Data</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    <div className="p-6">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Subscribers</p>
+                      <p className="text-2xl font-bold text-slate-900">{parseInt(youtubeStats.statistics?.subscriberCount).toLocaleString()}</p>
+                      <div className="flex items-center gap-1 mt-1 text-emerald-600">
+                        <TrendingUp className="w-3 h-3" />
+                        <span className="text-[10px] font-bold">Real-time growth</span>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Views</p>
+                      <p className="text-2xl font-bold text-slate-900">{parseInt(youtubeStats.statistics?.viewCount).toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Lifetime channel views</p>
+                    </div>
+                    <div className="p-6">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Videos</p>
+                      <p className="text-2xl font-bold text-slate-900">{parseInt(youtubeStats.statistics?.videoCount).toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Uploaded to primary channel</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {latestVideos.length > 0 && (
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-semibold text-slate-800">Latest Channel Content</h3>
+                    <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">View All</button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {latestVideos.map((video: any) => (
+                      <div key={video.id.videoId || video.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all group">
+                        <div className="aspect-video relative overflow-hidden">
+                          <img 
+                            src={video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url} 
+                            alt={video.snippet.title} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center text-red-600 shadow-lg">
+                              <Play className="w-6 h-6 fill-current" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h4 className="text-sm font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-indigo-600 transition-colors">
+                            {video.snippet.title}
+                          </h4>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {new Date(video.snippet.publishedAt).toLocaleDateString()}
+                            </span>
+                            <a 
+                              href={`https://www.youtube.com/watch?v=${video.id.videoId}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-[10px] font-bold text-slate-500 hover:text-slate-900 uppercase tracking-wider"
+                            >
+                              Watch Now
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="px-6 py-5 border-b border-slate-100">
@@ -721,6 +1557,13 @@ function App() {
                   <p className="text-slate-500 text-sm mt-1">Manage Content ID claims, disputes, and channel whitelists.</p>
                 </div>
                 <div className="flex gap-3">
+                  <button 
+                    onClick={handleSimulateDetection}
+                    className="px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors flex items-center shadow-sm"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Simulate Detection
+                  </button>
                   <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center shadow-sm">
                     <ShieldCheck className="w-4 h-4 mr-2" />
                     Whitelist Channel
@@ -784,44 +1627,85 @@ function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {claims.map((claim) => (
-                        <tr 
-                          key={claim.id} 
-                          onClick={() => {
-                            setSelectedClaim(claim);
-                            setClaimDetailsTab('overview');
-                          }}
-                          className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col">
-                              <p className="text-sm font-semibold text-slate-900">{claim.title}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-xs text-slate-500 font-mono">ID: {claim.id}</p>
-                                {isDeadlineClose(claim.deadline) && (
-                                  <span className="flex items-center text-[10px] font-bold bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 uppercase tracking-wider">
-                                    <AlertTriangle className="w-2.5 h-2.5 mr-1" />
-                                    Urgent
-                                  </span>
-                                )}
-                              </div>
+                      {isClaimsLoading ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                              <p className="text-sm text-slate-500">Loading claims...</p>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{claim.claimant}</td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{claim.matchType}</td>
-                          <td className="px-6 py-4">
-                            <span className={`${claim.statusColor} text-xs font-semibold px-2.5 py-1 rounded-full border border-current/10`}>{claim.status}</span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-500">{claim.date}</td>
-                          <td className="px-6 py-4 text-right">
-                            <button 
-                              className="text-indigo-600 group-hover:text-indigo-700 text-sm font-semibold transition-colors"
-                            >
-                              {claim.status === 'Released' ? 'View' : 'Review'}
-                            </button>
+                        </tr>
+                      ) : claims.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                            No copyright claims found.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        claims.map((claim) => (
+                          <tr 
+                            key={claim.id} 
+                            onClick={() => {
+                              setSelectedClaim(claim);
+                              setClaimDetailsTab('overview');
+                            }}
+                            className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-slate-900">{claim.title}</p>
+                                  {claim.notified && (
+                                    <span className="flex items-center text-[9px] font-bold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 uppercase tracking-wider">
+                                      <Bell className="w-2 h-2 mr-1" />
+                                      Notified
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <p className="text-xs text-slate-500 font-mono">ID: {claim.id}</p>
+                                  {isDeadlineClose(claim.deadline) && (
+                                    <span className="flex items-center text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200 uppercase tracking-wider animate-pulse">
+                                      <AlertTriangle className="w-2.5 h-2.5 mr-1" />
+                                      Urgent
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <p className="text-sm text-slate-700 font-medium">{claim.claimant}</p>
+                                {creators.find(c => c.id === claim.creatorId) && (
+                                  <p className="text-[10px] text-slate-400">Creator: {creators.find(c => c.id === claim.creatorId)?.name}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-700">{claim.matchType}</td>
+                            <td className="px-6 py-4">
+                              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                                claim.status === 'Active' ? 'bg-red-50 text-red-700 border-red-100' :
+                                claim.status === 'Disputed' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              }`}>
+                                {claim.status === 'Active' && <ShieldAlert className="w-3 h-3" />}
+                                {claim.status === 'Disputed' && <AlertTriangle className="w-3 h-3" />}
+                                {claim.status === 'Released' && <CheckCircle2 className="w-3 h-3" />}
+                                {claim.status}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500">{claim.date}</td>
+                            <td className="px-6 py-4 text-right">
+                              <button 
+                                className="text-indigo-600 group-hover:text-indigo-700 text-sm font-semibold transition-colors"
+                              >
+                                {claim.status === 'Released' ? 'View' : 'Review'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -871,6 +1755,10 @@ function App() {
                             </div>
                           )}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                              <p className="text-sm font-medium text-slate-500 mb-1">Content ID</p>
+                              <p className="text-base font-semibold text-slate-900">{selectedClaim.contentId || 'N/A'}</p>
+                            </div>
                             <div>
                               <p className="text-sm font-medium text-slate-500 mb-1">Video Title</p>
                               <p className="text-base font-semibold text-slate-900">{selectedClaim.title}</p>
@@ -951,6 +1839,13 @@ function App() {
                           Release Claim
                         </button>
                       )}
+                      <button 
+                        onClick={() => handleNotifyCopyright(selectedClaim)}
+                        className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors shadow-sm flex items-center gap-2"
+                      >
+                        <Bell className="w-4 h-4" />
+                        Notify Creator
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -977,6 +1872,7 @@ function App() {
                         <th className="px-6 py-4 font-semibold">Channel</th>
                         <th className="px-6 py-4 font-semibold">Subscribers</th>
                         <th className="px-6 py-4 font-semibold">Status</th>
+                        <th className="px-6 py-4 font-semibold">Payout Info</th>
                         <th className="px-6 py-4 font-semibold">Niche</th>
                         <th className="px-6 py-4 font-semibold text-right">Action</th>
                       </tr>
@@ -1008,7 +1904,17 @@ function App() {
                                   className="w-10 h-10 rounded-full border border-slate-200"
                                 />
                                 <div>
-                                  <p className="text-sm font-semibold text-slate-900">{creator.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold text-slate-900">{creator.name}</p>
+                                    {creator.adminNotes && (
+                                      <div className="group/note relative">
+                                        <FileText className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/note:opacity-100 transition-opacity pointer-events-none z-30">
+                                          {creator.adminNotes.length > 100 ? creator.adminNotes.substring(0, 100) + '...' : creator.adminNotes}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-slate-500">{creator.email}</p>
                                 </div>
                               </div>
@@ -1031,6 +1937,16 @@ function App() {
                                 {creator.status}
                               </span>
                             </td>
+                            <td className="px-6 py-4 text-sm text-slate-600">
+                              {creator.payoutOption ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-slate-900">{creator.payoutOption}</span>
+                                  <span className="text-xs text-slate-500 truncate max-w-[120px]">{creator.payoutDetails}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic">Not set</span>
+                              )}
+                            </td>
                             <td className="px-6 py-4 text-sm text-slate-600">{creator.niche || 'General'}</td>
                             <td className="px-6 py-4 text-right">
                               <button 
@@ -1046,6 +1962,20 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'channels' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Channel Management</h3>
+                  <p className="text-slate-500 text-sm mt-1">Manage linked YouTube channels.</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+                <p className="text-slate-500">Channel management interface is under development.</p>
               </div>
             </div>
           )}
@@ -1275,8 +2205,598 @@ function App() {
             </div>
           )}
 
+          {activeTab === 'payouts' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Payout Management</h3>
+                  <p className="text-slate-500 text-sm mt-1">Manage and track creator withdrawal requests and payments.</p>
+                </div>
+                <button 
+                  onClick={() => setShowCreatePayoutModal(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  New Payout
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap gap-4 items-center">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-slate-400" />
+                  <select 
+                    className="bg-transparent text-sm font-medium text-slate-700 outline-none"
+                    value={payoutFilters.status}
+                    onChange={(e) => setPayoutFilters({...payoutFilters, status: e.target.value})}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-slate-200 mx-2"></div>
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <select 
+                    className="bg-transparent text-sm font-medium text-slate-700 outline-none"
+                    value={payoutFilters.creatorId}
+                    onChange={(e) => setPayoutFilters({...payoutFilters, creatorId: e.target.value})}
+                  >
+                    <option value="">All Creators</option>
+                    {creators.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Payouts Table */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-6 py-4 font-semibold">Creator</th>
+                        <th className="px-6 py-4 font-semibold">Amount</th>
+                        <th className="px-6 py-4 font-semibold">Method</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
+                        <th className="px-6 py-4 font-semibold">Date</th>
+                        <th className="px-6 py-4 font-semibold">Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {isPayoutsLoading ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                              <p className="text-sm text-slate-500">Loading payouts...</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : payouts.filter(p => 
+                        (!payoutFilters.status || p.status === payoutFilters.status) &&
+                        (!payoutFilters.creatorId || p.creatorId === payoutFilters.creatorId)
+                      ).length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                            No payout records found matching your filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        payouts.filter(p => 
+                          (!payoutFilters.status || p.status === payoutFilters.status) &&
+                          (!payoutFilters.creatorId || p.creatorId === payoutFilters.creatorId)
+                        ).map((payout) => {
+                          const creator = creators.find(c => c.id === payout.creatorId);
+                          return (
+                            <tr key={payout.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">
+                                    {creator?.name?.charAt(0) || 'U'}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-900">{creator?.name || 'Unknown Creator'}</p>
+                                    <p className="text-xs text-slate-500">{creator?.email || 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm font-bold text-slate-900">${payout.amount?.toLocaleString()}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{payout.method}</td>
+                              <td className="px-6 py-4">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                  payout.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  payout.status === 'Processing' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                  payout.status === 'Rejected' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                  'bg-amber-50 text-amber-700 border border-amber-100'
+                                }`}>
+                                  {payout.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-500">
+                                {payout.timestamp?.toDate ? payout.timestamp.toDate().toLocaleDateString() : 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-500 font-mono">{payout.reference || '---'}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Settings & Administration</h3>
+                <p className="text-slate-500 text-sm mt-1">Manage system preferences and user permissions.</p>
+              </div>
+
+              {isAdmin && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                    <h4 className="font-bold text-slate-900">User Management</h4>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                          <th className="px-6 py-4 font-semibold">User</th>
+                          <th className="px-6 py-4 font-semibold">Email</th>
+                          <th className="px-6 py-4 font-semibold">Role</th>
+                          <th className="px-6 py-4 font-semibold">Joined</th>
+                          <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {isUsersLoading ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center">
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-sm text-slate-500">Loading users...</p>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : allUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No users found.</td>
+                          </tr>
+                        ) : (
+                          allUsers.map((u) => (
+                            <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <img 
+                                    src={u.photoURL || `https://picsum.photos/seed/${u.uid}/40/40`} 
+                                    alt={u.name} 
+                                    className="w-8 h-8 rounded-full border border-slate-200"
+                                  />
+                                  <p className="text-sm font-semibold text-slate-900">{u.name || 'Anonymous'}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600">{u.email}</td>
+                              <td className="px-6 py-4">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                  u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' :
+                                  u.role === 'editor' ? 'bg-amber-100 text-amber-700' :
+                                  'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-500">
+                                {u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <select 
+                                  className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                  value={u.role}
+                                  onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
+                                  disabled={u.email === 'hosenmdjakir629@gmail.com'} // Prevent self-demotion of super admin
+                                >
+                                  <option value="admin">Admin</option>
+                                  <option value="editor">Editor</option>
+                                  <option value="viewer">Viewer</option>
+                                  <option value="creator">Creator</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {isCreator && creatorProfile && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-indigo-600" />
+                    <h4 className="font-bold text-slate-900">Payout Settings</h4>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Payout Method</label>
+                      <select 
+                        value={creatorProfile.payoutOption || 'Bank Transfer'}
+                        onChange={(e) => setCreatorProfile({...creatorProfile, payoutOption: e.target.value})}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="PayPal">PayPal</option>
+                        <option value="Bkash">Bkash</option>
+                        <option value="Nagad">Nagad</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Payout Details</label>
+                      <input 
+                        type="text"
+                        value={creatorProfile.payoutDetails || ''}
+                        onChange={(e) => setCreatorProfile({...creatorProfile, payoutDetails: e.target.value})}
+                        placeholder="Enter account number or email"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const creatorRef = doc(db, 'creators', creatorProfile.id);
+                          await updateDoc(creatorRef, {
+                            payoutOption: creatorProfile.payoutOption || 'Bank Transfer',
+                            payoutDetails: creatorProfile.payoutDetails || ''
+                          });
+                          alert("Payout settings updated successfully!");
+                        } catch (error) {
+                          console.error("Error updating payout settings:", error);
+                          alert("Failed to update payout settings.");
+                        }
+                      }}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Save Payout Settings
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h4 className="font-bold text-slate-900 mb-4">System Preferences</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Email Notifications</p>
+                      <p className="text-xs text-slate-500">Receive alerts for new applications and payouts.</p>
+                    </div>
+                    <div className="w-12 h-6 bg-indigo-600 rounded-full relative cursor-pointer">
+                      <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Maintenance Mode</p>
+                      <p className="text-xs text-slate-500">Disable public application forms during maintenance.</p>
+                    </div>
+                    <div className="w-12 h-6 bg-slate-300 rounded-full relative cursor-pointer">
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'videos' && isCreator && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800 tracking-tight">My Video Uploads</h3>
+                  <p className="text-slate-500 text-sm mt-1">Upload and manage your video content for the platform.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Upload Form */}
+                <div className="lg:col-span-1">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
+                    <h4 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                      <Video className="w-5 h-5 text-indigo-600" />
+                      Upload New Video
+                    </h4>
+                    <form onSubmit={handleVideoUpload} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Video Title</label>
+                        <input 
+                          type="text" 
+                          required
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                          placeholder="Enter video title"
+                          value={videoTitle}
+                          onChange={e => setVideoTitle(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Video File</label>
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            required
+                            accept="video/*"
+                            className="hidden"
+                            id="video-upload"
+                            onChange={e => setVideoFile(e.target.files?.[0] || null)}
+                          />
+                          <label 
+                            htmlFor="video-upload"
+                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/30 transition-all"
+                          >
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Video className="w-8 h-8 text-slate-400 mb-2" />
+                              <p className="text-sm text-slate-500 font-medium">
+                                {videoFile ? videoFile.name : 'Click to select video'}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">MP4, MOV, AVI up to 500MB</p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Thumbnail</label>
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            className="hidden"
+                            id="thumbnail-upload"
+                            onChange={e => setThumbnailFile(e.target.files?.[0] || null)}
+                          />
+                          <label 
+                            htmlFor="thumbnail-upload"
+                            className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/30 transition-all"
+                          >
+                            <div className="flex flex-col items-center justify-center pt-3 pb-4">
+                              <Sparkles className="w-6 h-6 text-slate-400 mb-1" />
+                              <p className="text-sm text-slate-500 font-medium">
+                                {thumbnailFile ? thumbnailFile.name : 'Click to select thumbnail'}
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Blocked Countries (comma separated)</label>
+                        <input 
+                          type="text" 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                          placeholder="e.g. US, GB, CA"
+                          value={blockedCountries}
+                          onChange={e => setBlockedCountries(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          id="monetization-toggle"
+                          checked={isMonetized}
+                          onChange={e => setIsMonetized(e.target.checked)}
+                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                        />
+                        <label htmlFor="monetization-toggle" className="text-sm font-medium text-slate-700">Enable Monetization</label>
+                      </div>
+
+                      {isUploadingVideo && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-medium text-slate-500">
+                            <span>Uploading...</span>
+                            <span>{Math.round(uploadProgress)}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5">
+                            <div 
+                              className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" 
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={isUploadingVideo || !videoFile}
+                        className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isUploadingVideo ? 'Uploading...' : 'Upload Video'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Video List */}
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-5 border-b border-slate-100">
+                      <h4 className="font-semibold text-slate-800">Your Uploaded Videos</h4>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {!creatorProfile?.videos || creatorProfile.videos.length === 0 ? (
+                        <div className="px-6 py-12 text-center">
+                          <Video className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                          <p className="text-slate-500">No videos uploaded yet.</p>
+                        </div>
+                      ) : (
+                        [...creatorProfile.videos].reverse().map((video: any) => (
+                          <div key={video.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
+                                <Video className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{video.title}</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(video.uploadedAt).toLocaleDateString()}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">
+                                    {(video.size / (1024 * 1024)).toFixed(1)} MB
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-full ${
+                                  video.status === 'Live' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                                }`}>
+                                  {video.status}
+                                </span>
+                                <div className="flex gap-1">
+                                  {video.isMonetized !== false ? (
+                                    <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-bold uppercase rounded border border-indigo-100 flex items-center gap-0.5">
+                                      <DollarSign className="w-2 h-2" /> Monetized
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 bg-slate-50 text-slate-400 text-[8px] font-bold uppercase rounded border border-slate-200 flex items-center gap-0.5">
+                                      <ShieldAlert className="w-2 h-2" /> Demonetized
+                                    </span>
+                                  )}
+                                  {video.blockedCountries && video.blockedCountries.length > 0 && (
+                                    <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold uppercase rounded border border-red-100 flex items-center gap-0.5">
+                                      <ShieldAlert className="w-2 h-2" /> {video.blockedCountries.length} Blocked
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button 
+                                  onClick={() => fetchVideoAnalytics(video)}
+                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                  title="View Analytics"
+                                >
+                                  <BarChart3 className="w-5 h-5" />
+                                </button>
+                                <button 
+                                  onClick={() => setEditingVideo(video)}
+                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                  title="Edit Video"
+                                >
+                                  <Settings className="w-5 h-5" />
+                                </button>
+                                <a 
+                                  href={video.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                  title="View Video"
+                                >
+                                  <Sparkles className="w-5 h-5" />
+                                </a>
+                                <button 
+                                  onClick={() => handleDeleteVideo(video)}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Delete Video"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Video Analytics View */}
+                  {selectedVideoForAnalytics && (
+                    <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                            <BarChart3 className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-slate-800">Video Analytics</h4>
+                            <p className="text-xs text-slate-500">{selectedVideoForAnalytics.title}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setSelectedVideoForAnalytics(null)}
+                          className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                        >
+                          <X className="w-5 h-5 text-slate-400" />
+                        </button>
+                      </div>
+                      
+                      {isAnalyticsLoading ? (
+                        <div className="p-12 text-center">
+                          <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                          <p className="text-slate-500 text-sm">Fetching latest metrics...</p>
+                        </div>
+                      ) : videoAnalytics ? (
+                        <div className="p-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Views</p>
+                              <div className="flex items-end justify-between mt-2">
+                                <p className="text-2xl font-bold text-slate-900">{videoAnalytics.views.toLocaleString()}</p>
+                                <TrendingUp className="w-4 h-4 text-emerald-500 mb-1" />
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Watch Time (Hrs)</p>
+                              <div className="flex items-end justify-between mt-2">
+                                <p className="text-2xl font-bold text-slate-900">{videoAnalytics.watchTime.toLocaleString()}</p>
+                                <Activity className="w-4 h-4 text-indigo-500 mb-1" />
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Likes</p>
+                              <div className="flex items-end justify-between mt-2">
+                                <p className="text-2xl font-bold text-slate-900">{videoAnalytics.likes.toLocaleString()}</p>
+                                <Sparkles className="w-4 h-4 text-amber-500 mb-1" />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center gap-3">
+                            <Sparkles className="w-5 h-5 text-indigo-600" />
+                            <p className="text-sm text-indigo-700">
+                              This video is performing <strong>12% better</strong> than your average content. Keep it up!
+                            </p>
+                          </div>
+                          
+                          <div className="mt-4 text-right">
+                            <p className="text-[10px] text-slate-400 italic">
+                              Last updated: {new Date(videoAnalytics.lastUpdated).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-12 text-center text-slate-500">
+                          Failed to load analytics data.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Placeholder for other tabs */}
-          {activeTab !== 'dashboard' && activeTab !== 'tools' && activeTab !== 'invites' && activeTab !== 'copyright' && activeTab !== 'creators' && activeTab !== 'applications' && activeTab !== 'earnings' && (
+          {activeTab !== 'dashboard' && activeTab !== 'tools' && activeTab !== 'invites' && activeTab !== 'copyright' && activeTab !== 'creators' && activeTab !== 'applications' && activeTab !== 'earnings' && activeTab !== 'payouts' && activeTab !== 'settings' && activeTab !== 'videos' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                 <Settings className="w-8 h-8" />
@@ -1311,6 +2831,16 @@ function App() {
               </button>
             </div>
             <form onSubmit={handleManualClaimSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Content ID</label>
+                <input 
+                  type="text" 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                  placeholder="e.g., CONTENT_ID_123" 
+                  value={manualClaimForm.contentId} 
+                  onChange={e => setManualClaimForm({...manualClaimForm, contentId: e.target.value})} 
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Infringing Video URL</label>
                 <input 
@@ -1442,6 +2972,89 @@ function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Payout Modal */}
+      {showCreatePayoutModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Create New Payout</h3>
+              <button onClick={() => setShowCreatePayoutModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreatePayout} className="p-6">
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Creator</label>
+                  <select 
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                    value={newPayout.creatorId} 
+                    onChange={e => setNewPayout({...newPayout, creatorId: e.target.value})}
+                  >
+                    <option value="">Select a creator...</option>
+                    {creators.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.channelName})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount ($)</label>
+                  <input 
+                    required 
+                    type="number" 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                    placeholder="0.00"
+                    value={newPayout.amount} 
+                    onChange={e => setNewPayout({...newPayout, amount: e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                    value={newPayout.method} 
+                    onChange={e => setNewPayout({...newPayout, method: e.target.value})}
+                  >
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="PayPal">PayPal</option>
+                    <option value="Wise">Wise</option>
+                    <option value="Crypto">Crypto (USDT)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Reference / Transaction ID</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-mono text-sm" 
+                    placeholder="TXN_123456789"
+                    value={newPayout.reference} 
+                    onChange={e => setNewPayout({...newPayout, reference: e.target.value})} 
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                <button 
+                  type="button"
+                  onClick={() => setShowCreatePayoutModal(false)} 
+                  className="px-6 py-2.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isCreatingPayout}
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors shadow-md disabled:opacity-70 flex items-center gap-2"
+                >
+                  {isCreatingPayout && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                  Create Payout
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1603,11 +3216,25 @@ function App() {
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Monthly Revenue ($)</label>
                   <input 
                     type="number" 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                    disabled={!isAdmin}
+                    className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`} 
                     value={editingCreator.revenue || 0} 
                     onChange={e => setEditingCreator({...editingCreator, revenue: e.target.value})} 
                   />
+                  {!isAdmin && <p className="text-[10px] text-slate-400 mt-1">Only administrators can edit financial data.</p>}
                 </div>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Administrative Notes</label>
+                <textarea 
+                  rows={4}
+                  disabled={!isAdmin}
+                  className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none resize-none ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`} 
+                  placeholder="Add internal notes about management and performance..."
+                  value={editingCreator.adminNotes || ''} 
+                  onChange={e => setEditingCreator({...editingCreator, adminNotes: e.target.value})} 
+                />
+                {!isAdmin && <p className="text-[10px] text-slate-400 mt-1">Only administrators can edit internal notes.</p>}
               </div>
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
                 <button 
@@ -1630,8 +3257,47 @@ function App() {
           </div>
         </div>
       )}
+
+      {editingVideo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-900">Edit Video: {editingVideo.title}</h3>
+              <button onClick={() => setEditingVideo(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateVideo} className="p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="monetization-toggle"
+                  checked={editingVideo.isMonetized ?? true}
+                  onChange={e => setEditingVideo({...editingVideo, isMonetized: e.target.checked})}
+                  className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                />
+                <label htmlFor="monetization-toggle" className="text-sm font-medium text-slate-700">Enable Monetization</label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Blocked Countries (comma separated)</label>
+                <input 
+                  type="text" 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none" 
+                  placeholder="e.g. US, GB, CA"
+                  value={editingVideo.blockedCountries?.join(', ') || ''}
+                  onChange={e => setEditingVideo({...editingVideo, blockedCountries: e.target.value.split(',').map(c => c.trim()).filter(c => c !== '')})}
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setEditingVideo(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
+    </div>
   );
 }
 

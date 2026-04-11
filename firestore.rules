@@ -11,9 +11,21 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
+        (request.auth.token.email == "hosenmdjakir629@gmail.com" || 
+         (request.auth.token.email_verified == true &&
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isManager() {
+      return isAuthenticated() && 
         request.auth.token.email_verified == true &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-         request.auth.token.email == "hosenmdjakir629@gmail.com");
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
+
+    function isStaff() {
+      return isAdmin() || isManager();
     }
 
     function isOwner(userId) {
@@ -44,7 +56,14 @@ service cloud.firestore {
     function isValidCreator(data) {
       return data.name is string && data.name.size() < 100 &&
              (!('email' in data) || isValidEmail(data.email)) &&
-             (!('status' in data) || data.status in ['Active', 'Pending', 'Suspended', 'Inactive', 'Processing']);
+             (!('status' in data) || data.status in ['Active', 'Pending', 'Suspended', 'Inactive', 'Processing']) &&
+             (!('videos' in data) || data.videos is list) &&
+             (!('adminNotes' in data) || data.adminNotes is string) &&
+             (!('payoutOption' in data) || data.payoutOption in ['Bank Transfer', 'PayPal', 'Bkash', 'Nagad']) &&
+             (!('payoutDetails' in data) || data.payoutDetails is string) &&
+             (!('contract' in data) || (data.contract.startDate is string && data.contract.endDate is string && data.contract.revenueSplit is number)) &&
+             (!('kyc' in data) || (data.kyc.status in ['Pending', 'Verified', 'Rejected'] && data.kyc.documentUrl is string)) &&
+             (!('tier' in data) || data.tier in ['Silver', 'Gold', 'VIP']);
     }
 
     function isValidNotification(data) {
@@ -59,38 +78,54 @@ service cloud.firestore {
              data.status in ['Pending', 'Approved', 'Rejected', 'More Info Needed'];
     }
 
+    function isValidChannel(data) {
+      return data.name is string && data.name.size() < 100 &&
+             data.youtubeChannelId is string &&
+             data.type in ['Affiliate', 'Owned'] &&
+             data.status in ['Pending', 'Active', 'Released'] &&
+             data.ownerId is string &&
+             data.createdAt is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
+    match /channels/{channelId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.ownerId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidChannel(request.resource.data);
+      allow update: if isStaff() || (isAuthenticated() && resource.data.ownerId == request.auth.uid && isValidChannel(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isStaff();
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isAdmin() || (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role);
     }
 
     match /creators/{creatorId} {
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow read: if isStaff() || (isAuthenticated() && resource.data.uid == request.auth.uid);
       allow create: if true; // Allow public applications
-      allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid && isValidCreator(request.resource.data));
+      allow update: if isStaff() || (isAuthenticated() && resource.data.uid == request.auth.uid && isValidCreator(request.resource.data));
       allow delete: if isAdmin();
     }
 
     match /notifications/{notificationId} {
-      allow read: if isAdmin();
+      allow read: if isStaff();
       allow create: if true; // Allow public applications
-      allow update, delete: if isAdmin();
+      allow update, delete: if isStaff();
     }
 
     match /applications/{applicationId} {
-      allow read: if isAdmin();
+      allow read: if isStaff();
       allow create: if true; // Allow public applications
-      allow update: if isAdmin() && isValidApplication(request.resource.data);
+      allow update: if isStaff() && isValidApplication(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /analytics/{analyticsId} {
-      allow read: if isAdmin();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
@@ -106,8 +141,24 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    function isValidClaim(data) {
+      return data.id is string &&
+             (!('contentId' in data) || data.contentId is string) &&
+             data.title is string && data.title.size() < 100 &&
+             data.claimant is string && data.claimant.size() < 100 &&
+             data.status in ['Active', 'Disputed', 'Released'] &&
+             data.date is string;
+    }
+
+    match /claims/{claimId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
+      allow create: if isStaff() && isValidClaim(request.resource.data);
+      allow update: if isStaff() && isValidClaim(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
     match /payments/{paymentId} {
-      allow read: if isAdmin();
+      allow read: if isStaff();
       allow create: if true; // Allow public payment submissions
       allow update, delete: if isAdmin();
     }
@@ -116,6 +167,11 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
+    }
+
+    match /videoAnalytics/{analyticsId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
+      allow write: if isAdmin() || (isAuthenticated() && request.resource.data.creatorId == request.auth.uid);
     }
     
     match /test/connection {

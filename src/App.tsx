@@ -43,7 +43,7 @@ import {
   updateProfile
 } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, addDoc, serverTimestamp, collection, getDocs, updateDoc, onSnapshot, query, orderBy, where, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, serverTimestamp, collection, getDocs, updateDoc, onSnapshot, query, orderBy, where, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './firebase';
 
@@ -139,14 +139,23 @@ function App() {
   const isStaff = isAdmin || isEditor;
   const isCreator = userProfile?.role === 'creator';
 
+  const fetchWithJson = async (url: string, options?: RequestInit) => {
+    const response = await fetch(url, options);
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return response.json();
+    }
+    const text = await response.text();
+    throw new Error(`Expected JSON but received ${contentType || 'unknown'}. Content: ${text.substring(0, 100)}...`);
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     setYoutubeError(null);
     try {
-      const response = await fetch(`/api/youtube/search/${encodeURIComponent(searchQuery)}`);
-      const data = await response.json();
+      const data = await fetchWithJson(`/api/youtube/search/${encodeURIComponent(searchQuery)}`);
       if (Array.isArray(data)) {
         setLatestVideos(data);
         setActiveTab('dashboard'); // Switch to dashboard to show results
@@ -155,7 +164,7 @@ function App() {
       }
     } catch (error) {
       console.error("Search error:", error);
-      setYoutubeError("Search failed. Please check your network connection.");
+      setYoutubeError(error instanceof Error ? error.message : "Search failed. Please check your network connection.");
     } finally {
       setIsSearching(false);
     }
@@ -232,16 +241,33 @@ function App() {
   }, [user, isAdmin, isStaff]);
 
   useEffect(() => {
+    if (user && activeTab === 'contentid') {
+      setIsAssetsLoading(true);
+      const assetsQuery = isAdmin 
+        ? query(collection(db, 'content_id_assets'), orderBy('createdAt', 'desc'))
+        : query(collection(db, 'content_id_assets'), where('ownerUid', '==', user.uid), orderBy('createdAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(assetsQuery, (snapshot) => {
+        const assetsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setContentIdAssets(assetsList);
+        setIsAssetsLoading(false);
+      }, (error) => {
+        console.error("Error fetching assets:", error);
+        setIsAssetsLoading(false);
+      });
+      return () => unsubscribe();
+    }
+  }, [user, activeTab, isAdmin]);
+
+  useEffect(() => {
     if (user && (user.emailVerified || userProfile?.role !== 'admin')) {
-      fetch('/api/admin/stats')
-        .then(res => res.json())
+      fetchWithJson('/api/admin/stats')
         .then(data => setStats(data))
-        .catch(err => console.error(err));
+        .catch(err => console.error("Admin stats fetch error:", err));
 
       setIsYoutubeStatsLoading(true);
       setYoutubeError(null);
-      fetch('/api/youtube/stats')
-        .then(res => res.json())
+      fetchWithJson('/api/youtube/stats')
         .then(data => {
           if (data.success) {
             setYoutubeStats(data.data);
@@ -250,12 +276,11 @@ function App() {
           }
         })
         .catch(err => {
-          console.error(err);
-          setYoutubeError('Network error while fetching YouTube stats');
+          console.error("YouTube stats fetch error:", err);
+          setYoutubeError(err instanceof Error ? err.message : 'Network error while fetching YouTube stats');
         });
 
-      fetch('/api/youtube/videos')
-        .then(res => res.json())
+      fetchWithJson('/api/youtube/videos')
         .then(data => {
           if (Array.isArray(data)) {
             setLatestVideos(data);
@@ -263,7 +288,7 @@ function App() {
             setYoutubeError(prev => prev || data.error);
           }
         })
-        .catch(err => console.error(err))
+        .catch(err => console.error("YouTube videos fetch error:", err))
         .finally(() => setIsYoutubeStatsLoading(false));
     }
   }, [user, userProfile]);
@@ -355,6 +380,14 @@ function App() {
     { id: 'finance-management', title: 'Finance Management', description: 'Track earnings and payments', icon: DollarSign, badge: null, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
+  // Content ID state
+  const [contentIdAssets, setContentIdAssets] = useState<any[]>([]);
+  const [isAssetsLoading, setIsAssetsLoading] = useState(false);
+  const [showAddAssetModal, setShowAddAssetModal] = useState(false);
+  const [newAsset, setNewAsset] = useState({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '' });
+  const [assetValidationErrors, setAssetValidationErrors] = useState<{ [key: string]: string }>({});
+  const [isCreatingAsset, setIsCreatingAsset] = useState(false);
+
   // Copyright state
   const [claims, setClaims] = useState<any[]>([]);
   const [isClaimsLoading, setIsClaimsLoading] = useState(false);
@@ -437,6 +470,54 @@ function App() {
       setInviteStatus({ type: 'error', message: 'Failed to send invite. Please try again.' });
     } finally {
       setIsInviting(false);
+    }
+  };
+
+  const handleAddAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    // Client-side validation
+    const errors: { [key: string]: string } = {};
+    if (!newAsset.title.trim()) errors.title = "Asset title is required";
+    if (!newAsset.artist.trim()) errors.artist = "Artist / Primary Owner is required";
+    
+    // Optional: Validate ISRC format if provided
+    if (newAsset.isrc && !/^[A-Z]{2}-?[A-Z0-9]{3}-?\d{2}-?\d{5}$/i.test(newAsset.isrc)) {
+      errors.isrc = "Invalid ISRC format (e.g. US-S1Z-24-00001)";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAssetValidationErrors(errors);
+      return;
+    }
+
+    setAssetValidationErrors({});
+    setIsCreatingAsset(true);
+    try {
+      await addDoc(collection(db, 'content_id_assets'), {
+        ...newAsset,
+        status: newAsset.status || 'Active',
+        createdAt: serverTimestamp(),
+        ownerUid: newAsset.ownerUid || user.uid
+      });
+      setShowAddAssetModal(false);
+      setNewAsset({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '' });
+    } catch (error) {
+      console.error("Error adding asset:", error);
+      alert("Failed to add asset. Please try again.");
+    } finally {
+      setIsCreatingAsset(false);
+    }
+  };
+
+  const handleDeleteAsset = async (assetId: string) => {
+    if (!window.confirm("Are you sure you want to delete this asset? This action cannot be undone.")) return;
+    try {
+      await deleteDoc(doc(db, 'content_id_assets', assetId));
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      alert("Failed to delete asset. Please try again.");
     }
   };
 
@@ -1105,6 +1186,13 @@ function App() {
           </button>
           {isAdmin && (
             <>
+              <button 
+                onClick={() => setActiveTab('contentid')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'contentid' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <ShieldCheck className="w-5 h-5 mr-3" />
+                Content ID
+              </button>
               <button 
                 onClick={() => setActiveTab('earnings')}
                 className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'earnings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
@@ -1851,6 +1939,133 @@ function App() {
                 </div>
               </div>
             )}
+            </div>
+          )}
+
+          {activeTab === 'contentid' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Content ID Management</h3>
+                  <p className="text-slate-500 text-sm mt-1">Manage your original assets and digital fingerprints.</p>
+                </div>
+                <button 
+                  onClick={() => setShowAddAssetModal(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Add New Asset
+                </button>
+              </div>
+
+              {/* Asset Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Assets</h3>
+                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">{contentIdAssets.length}</p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Active References</h3>
+                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">{contentIdAssets.filter(a => a.status === 'Active').length}</p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Monetized Assets</h3>
+                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">{contentIdAssets.filter(a => a.policy === 'Monetize').length}</p>
+                </div>
+              </div>
+
+              {/* Assets Table */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="text-base font-semibold text-slate-800">Asset Library</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-6 py-4 font-semibold">Asset Title</th>
+                        <th className="px-6 py-4 font-semibold">Asset ID</th>
+                        <th className="px-6 py-4 font-semibold">Type</th>
+                        <th className="px-6 py-4 font-semibold">Artist / Owner</th>
+                        <th className="px-6 py-4 font-semibold">ISRC</th>
+                        <th className="px-6 py-4 font-semibold">Policy</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
+                        <th className="px-6 py-4 font-semibold">Last Updated</th>
+                        <th className="px-6 py-4 font-semibold">Owner UID</th>
+                        <th className="px-6 py-4 font-semibold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {isAssetsLoading ? (
+                        <tr>
+                          <td colSpan={10} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                              <p className="text-sm text-slate-500">Loading assets...</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : contentIdAssets.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
+                            No assets found in your library.
+                          </td>
+                        </tr>
+                      ) : (
+                        contentIdAssets.map((asset) => (
+                          <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-semibold text-slate-900">{asset.title}</p>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-slate-500 font-mono">
+                              {asset.id.substring(0, 8)}...
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${asset.type === 'Audio' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                                {asset.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-700">{asset.artist}</td>
+                            <td className="px-6 py-4 text-xs text-slate-500 font-mono">
+                              {asset.isrc || '—'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${asset.policy === 'Monetize' ? 'bg-emerald-50 text-emerald-600' : asset.policy === 'Block' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-600'}`}>
+                                {asset.policy}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-1.5">
+                                <div className={`w-2 h-2 rounded-full ${asset.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
+                                <span className="text-sm text-slate-700">{asset.status}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-slate-500">
+                              {asset.createdAt?.toDate ? asset.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 text-xs text-slate-500 font-mono">
+                              {asset.ownerUid || '—'}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end gap-3">
+                                <button className="text-indigo-600 hover:text-indigo-700 text-sm font-semibold">
+                                  Manage
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteAsset(asset.id)}
+                                  className="text-red-600 hover:text-red-700 text-sm font-semibold"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -3291,6 +3506,148 @@ function App() {
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setEditingVideo(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">Cancel</button>
                 <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Asset Modal */}
+      {showAddAssetModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-xl font-semibold text-slate-900 tracking-tight">Add New Asset</h3>
+              <button onClick={() => { setShowAddAssetModal(false); setAssetValidationErrors({}); }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleAddAsset} className="p-8 space-y-5">
+              <div className="grid grid-cols-1 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Asset Title</label>
+                  <input 
+                    type="text" 
+                    value={newAsset.title}
+                    onChange={(e) => {
+                      setNewAsset({...newAsset, title: e.target.value});
+                      if (assetValidationErrors.title) {
+                        const newErrors = {...assetValidationErrors};
+                        delete newErrors.title;
+                        setAssetValidationErrors(newErrors);
+                      }
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${assetValidationErrors.title ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-300 focus:ring-indigo-500/20 focus:border-indigo-500'} transition-all outline-none`}
+                    placeholder="e.g. Summer Vibes (Original Mix)"
+                  />
+                  {assetValidationErrors.title && <p className="text-red-500 text-xs mt-1">{assetValidationErrors.title}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Asset Type</label>
+                    <select 
+                      value={newAsset.type}
+                      onChange={(e) => setNewAsset({...newAsset, type: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                    >
+                      <option value="Audio">Audio</option>
+                      <option value="Video">Video</option>
+                      <option value="Audiovisual">Audiovisual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Match Policy</label>
+                    <select 
+                      value={newAsset.policy}
+                      onChange={(e) => setNewAsset({...newAsset, policy: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                    >
+                      <option value="Monetize">Monetize</option>
+                      <option value="Block">Block</option>
+                      <option value="Track">Track</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Artist / Primary Owner</label>
+                  <input 
+                    type="text" 
+                    value={newAsset.artist}
+                    onChange={(e) => {
+                      setNewAsset({...newAsset, artist: e.target.value});
+                      if (assetValidationErrors.artist) {
+                        const newErrors = {...assetValidationErrors};
+                        delete newErrors.artist;
+                        setAssetValidationErrors(newErrors);
+                      }
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${assetValidationErrors.artist ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-300 focus:ring-indigo-500/20 focus:border-indigo-500'} transition-all outline-none`}
+                    placeholder="e.g. DJ OrbitX"
+                  />
+                  {assetValidationErrors.artist && <p className="text-red-500 text-xs mt-1">{assetValidationErrors.artist}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">ISRC / Custom ID (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={newAsset.isrc}
+                    onChange={(e) => {
+                      setNewAsset({...newAsset, isrc: e.target.value});
+                      if (assetValidationErrors.isrc) {
+                        const newErrors = {...assetValidationErrors};
+                        delete newErrors.isrc;
+                        setAssetValidationErrors(newErrors);
+                      }
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${assetValidationErrors.isrc ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-300 focus:ring-indigo-500/20 focus:border-indigo-500'} transition-all outline-none`}
+                    placeholder="e.g. US-S1Z-24-00001"
+                  />
+                  {assetValidationErrors.isrc && <p className="text-red-500 text-xs mt-1">{assetValidationErrors.isrc}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select 
+                      value={newAsset.status}
+                      onChange={(e) => setNewAsset({...newAsset, status: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Owner UID (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={newAsset.ownerUid}
+                      onChange={(e) => setNewAsset({...newAsset, ownerUid: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                      placeholder="Creator's UID"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => { setShowAddAssetModal(false); setAssetValidationErrors({}); }} 
+                  className="px-6 py-2.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isCreatingAsset}
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 flex items-center"
+                >
+                  {isCreatingAsset ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Creating...
+                    </>
+                  ) : 'Create Asset'}
+                </button>
               </div>
             </form>
           </div>

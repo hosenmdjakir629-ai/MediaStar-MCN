@@ -220,6 +220,22 @@
         "lastUpdated": { "type": "string", "format": "date-time", "description": "Last time the analytics were updated." }
       },
       "required": ["videoId", "creatorId", "views", "watchTime", "likes", "lastUpdated"]
+    },
+    "ContentIdAsset": {
+      "title": "ContentIdAsset",
+      "description": "An original asset owned by the MCN for Content ID matching.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Asset title." },
+        "type": { "type": "string", "enum": ["Audio", "Video", "Audiovisual"], "description": "Asset type." },
+        "artist": { "type": "string", "description": "Artist or primary owner." },
+        "isrc": { "type": "string", "description": "ISRC or custom ID." },
+        "policy": { "type": "string", "enum": ["Monetize", "Block", "Track"], "description": "Match policy." },
+        "status": { "type": "string", "enum": ["Active", "Inactive"], "description": "Asset status." },
+        "ownerUid": { "type": "string", "description": "UID of the user who added the asset." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["title", "type", "artist", "policy", "status", "ownerUid", "createdAt"]
     }
   },
   "firestore": {
@@ -266,6 +282,10 @@
     "/videoAnalytics/{analyticsId}": {
       "schema": { "$ref": "#/entities/VideoAnalytics" },
       "description": "Stores analytics data for uploaded videos."
+    },
+    "/content_id_assets/{assetId}": {
+      "schema": { "$ref": "#/entities/ContentIdAsset" },
+      "description": "Stores original assets for Content ID matching."
     }
   }
 }

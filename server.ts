@@ -83,9 +83,22 @@ async function startServer() {
       console.error('Error fetching YouTube stats:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Failed to fetch YouTube statistics' 
+        message: error instanceof Error ? error.message : 'Failed to fetch YouTube statistics' 
       });
     }
+  });
+
+  // Alias for user request
+  app.get('/api/channel', async (req, res) => {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    const channelId = process.env.CHANNEL_ID;
+    if (!apiKey || !channelId) return res.status(400).json({ error: 'Not configured' });
+    try {
+      const response = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}&key=${apiKey}`);
+      const data = await response.json();
+      if (data.items && data.items[0]) res.json(data.items[0]);
+      else res.status(404).json({ error: 'Not found' });
+    } catch (err) { res.status(500).json({ error: (err as Error).message }); }
   });
 
   // 🎬 Latest Videos
@@ -111,6 +124,18 @@ async function startServer() {
     }
   });
 
+  // Alias for user request
+  app.get("/api/videos", async (req, res) => {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    const channelId = process.env.CHANNEL_ID;
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=6`;
+      const response = await fetch(url);
+      const data = await response.json();
+      res.json(data.items || []);
+    } catch (err) { res.status(500).json({ error: (err as Error).message }); }
+  });
+
   // 🔍 Search Videos
   app.get("/api/youtube/search/:query", async (req, res) => {
     const apiKey = process.env.YOUTUBE_API_KEY;
@@ -134,6 +159,18 @@ async function startServer() {
     }
   });
 
+  // Alias for user request
+  app.get("/api/search/:query", async (req, res) => {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    try {
+      const q = encodeURIComponent(req.params.query);
+      const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&q=${q}&part=snippet&maxResults=6`;
+      const response = await fetch(url);
+      const data = await response.json();
+      res.json(data.items || []);
+    } catch (err) { res.status(500).json({ error: (err as Error).message }); }
+  });
+
   // 🧠 MCN Multi Channel
   app.post("/api/youtube/mcn", async (req, res) => {
     const apiKey = process.env.YOUTUBE_API_KEY;
@@ -143,6 +180,13 @@ async function startServer() {
       for (let id of ids) {
         const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${id}&key=${apiKey}`;
         const response = await fetch(url);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`YouTube API MCN Error for ${id}:`, JSON.stringify(errorData, null, 2));
+          continue; // Skip failed channels
+        }
+
         const data = await response.json();
         if (data.items && data.items[0]) {
           results.push(data.items[0]);
@@ -309,6 +353,11 @@ async function startServer() {
       console.error('Error:', error);
       res.status(500).json({ success: false });
     }
+  });
+
+  // 404 for API routes
+  app.use('/api/*all', (req, res) => {
+    res.status(404).json({ error: 'API route not found' });
   });
 
   // Vite middleware for development

@@ -173,6 +173,22 @@ service cloud.firestore {
       allow read: if isStaff() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
       allow write: if isAdmin() || (isAuthenticated() && request.resource.data.creatorId == request.auth.uid);
     }
+
+    function isValidAsset(data) {
+      return data.title is string && data.title.size() < 200 &&
+             data.type in ['Audio', 'Video', 'Audiovisual'] &&
+             data.artist is string && data.artist.size() < 200 &&
+             data.policy in ['Monetize', 'Block', 'Track'] &&
+             data.status in ['Active', 'Inactive'] &&
+             data.ownerUid is string;
+    }
+
+    match /content_id_assets/{assetId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAuthenticated() && isValidAsset(request.resource.data);
+      allow update: if isStaff() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid && isValidAsset(request.resource.data));
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+    }
     
     match /test/connection {
       allow read: if true;

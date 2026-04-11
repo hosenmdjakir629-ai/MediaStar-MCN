@@ -1,33 +1,36 @@
 {
-  "name": "orbitx-mcn-creators-cms",
+  "name": "orbitx-mcn-backend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "start": "vite",
-    "build": "vite build --outDir dist",
-    "preview": "vite preview",
+    "dev": "tsx server.ts",
+    "start": "node server.ts",
+    "build": "vite build",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@emailjs/browser": "^4.4.1",
-    "@google/genai": "^1.38.0",
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "firebase": "^12.10.0",
+    "lucide-react": "^1.7.0",
+    "nodemailer": "^8.0.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.13.2",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.0.0",
-    "firebase": "^12.10.0",
-    "html2canvas": "1.4.1",
-    "jspdf": "2.5.1",
-    "lucide-react": "^0.563.0",
-    "motion": "^12.35.0",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "react-router-dom": "^7.13.2",
-    "recharts": "^2.13.3",
-    "tailwindcss": "^4.2.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^8.0.3"
   }
 }

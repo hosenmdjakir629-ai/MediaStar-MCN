@@ -43,6 +43,26 @@
       },
       "required": ["name", "status", "trend"]
     },
+    "Application": {
+      "title": "Application",
+      "description": "A creator application for joining the MCN.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Applicant's full name." },
+        "email": { "type": "string", "format": "email", "description": "Applicant's email address." },
+        "channelName": { "type": "string", "description": "YouTube channel name." },
+        "channelUrl": { "type": "string", "description": "Link to the YouTube channel." },
+        "subscribers": { "type": "number", "description": "Subscriber count." },
+        "niche": { "type": "string", "description": "Content niche." },
+        "message": { "type": "string", "description": "Applicant's message." },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "More Info Needed"], "description": "Application status." },
+        "adminNotes": { "type": "string", "description": "Notes from the admin review." },
+        "reviewedAt": { "type": "string", "format": "date-time", "description": "When the application was reviewed." },
+        "reviewedBy": { "type": "string", "description": "UID of the admin who reviewed it." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the application was submitted." }
+      },
+      "required": ["name", "email", "channelName", "status", "createdAt"]
+    },
     "Log": {
       "title": "Log",
       "description": "System activity log.",
@@ -147,6 +167,10 @@
     "/notifications/{notificationId}": {
       "schema": { "$ref": "#/entities/Notification" },
       "description": "Stores admin notifications."
+    },
+    "/applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/Application" },
+      "description": "Stores creator applications."
     }
   }
 }

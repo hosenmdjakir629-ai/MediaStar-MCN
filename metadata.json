@@ -1,5 +1,9 @@
 {
-  "name": "OrbitX MCN",
+  "name": "OrbitX MCN Admin Portal ",
   "description": "A next-generation YouTube Multi-Channel Network (MCN) dashboard featuring advanced analytics, creator management, and a streamlined creator application process with ZIP file support.",
-  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
 }

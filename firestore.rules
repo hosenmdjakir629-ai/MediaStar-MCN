@@ -11,8 +11,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
+        request.auth.token.email_verified == true &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-         (request.auth.token.email == "hosenmdjakir629@gmail.com" && request.auth.token.email_verified == true));
+         request.auth.token.email == "hosenmdjakir629@gmail.com");
     }
 
     function isOwner(userId) {
@@ -52,6 +53,12 @@ service cloud.firestore {
              data.timestamp is string;
     }
 
+    function isValidApplication(data) {
+      return data.name is string && data.name.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.status in ['Pending', 'Approved', 'Rejected', 'More Info Needed'];
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -73,6 +80,13 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if true; // Allow public applications
       allow update, delete: if isAdmin();
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isAdmin();
+      allow create: if true; // Allow public applications
+      allow update: if isAdmin() && isValidApplication(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /analytics/{analyticsId} {

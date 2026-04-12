@@ -140,17 +140,22 @@
     },
     "Earnings": {
       "title": "Earnings",
-      "description": "Monthly earnings record for a creator.",
+      "description": "Monthly earnings record for a creator with split engine details.",
       "type": "object",
       "properties": {
         "creatorId": { "type": "string", "description": "UID of the creator." },
+        "channelId": { "type": "string", "description": "ID of the channel." },
         "month": { "type": "string", "description": "Month string (e.g., '2024-03')." },
-        "adRevenue": { "type": "number", "description": "Revenue from YouTube ads." },
-        "brandDealRevenue": { "type": "number", "description": "Revenue from brand deals." },
-        "totalRevenue": { "type": "number", "description": "Total monthly revenue." },
-        "status": { "type": "string", "enum": ["Accrued", "Ready", "Paid"], "description": "Payment status of these earnings." }
+        "totalRevenue": { "type": "number", "description": "Total revenue before split." },
+        "creatorShare": { "type": "number", "description": "Share allocated to the creator." },
+        "mcnShare": { "type": "number", "description": "Share allocated to the MCN." },
+        "bonusPool": { "type": "number", "description": "Share allocated to the bonus pool." },
+        "creatorPercentage": { "type": "number", "description": "Percentage for creator." },
+        "mcnPercentage": { "type": "number", "description": "Percentage for MCN." },
+        "bonusPercentage": { "type": "number", "description": "Percentage for bonus pool." },
+        "status": { "type": "string", "enum": ["Accrued", "Ready", "Paid"], "description": "Payment status." }
       },
-      "required": ["creatorId", "month", "adRevenue", "brandDealRevenue", "totalRevenue", "status"]
+      "required": ["creatorId", "totalRevenue", "creatorShare", "mcnShare", "bonusPool", "status"]
     },
     "Payout": {
       "title": "Payout",

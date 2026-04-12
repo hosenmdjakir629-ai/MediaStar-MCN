@@ -24,13 +24,38 @@ import {
   Trash2,
   BarChart3,
   TrendingUp,
+  Plus,
   X,
   LogIn,
   LogOut,
   Mail,
   Search,
-  Play
+  Play,
+  RefreshCw,
+  Loader2,
+  Lightbulb,
+  Zap,
+  Image as ImageIcon,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Upload,
+  UserCheck
 } from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar
+} from 'recharts';
+import { generateVideoIdeas, optimizeTitle, suggestThumbnails } from './services/geminiService';
 import { 
   auth, 
   db, 
@@ -77,6 +102,18 @@ function App() {
   const [earnings, setEarnings] = useState<any[]>([]);
   const [isEarningsLoading, setIsEarningsLoading] = useState(false);
   const [earningsFilters, setEarningsFilters] = useState({ month: '', creatorId: '' });
+  const [showAddEarningModal, setShowAddEarningModal] = useState(false);
+  const [isAddingEarning, setIsAddingEarning] = useState(false);
+  const [newEarning, setNewEarning] = useState({
+    creatorId: '',
+    channelId: '',
+    month: new Date().toISOString().slice(0, 7),
+    totalRevenue: '',
+    creatorPercentage: 70,
+    mcnPercentage: 20,
+    bonusPercentage: 10,
+    status: 'Accrued'
+  });
 
   // Payouts state
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -87,9 +124,62 @@ function App() {
   const [isCreatingPayout, setIsCreatingPayout] = useState(false);
   
   // Invite form state
-  const [inviteForm, setInviteForm] = useState({ channelName: '', email: '', message: '' });
+  const [inviteForm, setInviteForm] = useState({ channelName: '', channelUrl: '', email: '', message: '' });
   const [isInviting, setIsInviting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  const handleSyncChannel = async () => {
+    if (!inviteForm.channelUrl) {
+      setInviteStatus({ type: 'error', message: 'Please enter a Channel URL first' });
+      return;
+    }
+    
+    setIsSyncing(true);
+    // Simulate API delay for a realistic feel
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    try {
+      const url = inviteForm.channelUrl.toLowerCase();
+      let name = '';
+      
+      // Basic extraction logic for YouTube URLs
+      if (url.includes('@')) {
+        name = url.split('@')[1].split(/[/?#]/)[0];
+      } else if (url.includes('channel/')) {
+        name = 'Channel ' + url.split('channel/')[1].substring(0, 8);
+      } else if (url.includes('user/')) {
+        name = url.split('user/')[1].split(/[/?#]/)[0];
+      } else if (url.includes('c/')) {
+        name = url.split('c/')[1].split(/[/?#]/)[0];
+      } else {
+        // Fallback: try to get something from the end of the URL
+        const parts = url.split('/').filter(p => p);
+        if (parts.length > 0) {
+          name = parts[parts.length - 1];
+        }
+      }
+      
+      if (name) {
+        // Clean up name (capitalize, remove hyphens/dots)
+        const formattedName = name
+          .split(/[-_.]/)
+          .filter(word => word.length > 0)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        
+        setInviteForm(prev => ({ ...prev, channelName: formattedName }));
+        setInviteStatus({ type: 'success', message: 'Channel details synced successfully!' });
+        setTimeout(() => setInviteStatus(null), 3000);
+      } else {
+        setInviteStatus({ type: 'error', message: 'Could not extract channel name from URL' });
+      }
+    } catch (error) {
+      setInviteStatus({ type: 'error', message: 'Failed to sync channel details' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Users state (for admin management)
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -120,6 +210,109 @@ function App() {
   const [showManualClaimModal, setShowManualClaimModal] = useState(false);
   const [manualClaimForm, setManualClaimForm] = useState({ videoUrl: '', claimant: '', matchType: 'visual', description: '', contentId: '' });
 
+  // Withdrawal State
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [withdrawalForm, setWithdrawalForm] = useState({ amount: '', method: 'Bank Transfer', details: '' });
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  const handleWithdrawalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !userProfile) return;
+    
+    const amountNum = parseFloat(withdrawalForm.amount);
+    if (isNaN(amountNum) || amountNum <= 0) return;
+    
+    setIsWithdrawing(true);
+    try {
+      await addDoc(collection(db, 'payouts'), {
+        creatorId: user.uid,
+        creatorName: userProfile.name,
+        amount: amountNum,
+        method: withdrawalForm.method,
+        details: withdrawalForm.details,
+        status: 'Pending',
+        createdAt: serverTimestamp()
+      });
+      setShowWithdrawalModal(false);
+      setWithdrawalForm({ amount: '', method: 'Bank Transfer', details: '' });
+    } catch (error) {
+      console.error("Withdrawal Error:", error);
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+  const [kycForm, setKycForm] = useState({ idType: 'National ID', idNumber: '', idImage: '' });
+  const [isKycSubmitting, setIsKycSubmitting] = useState(false);
+  const [kycStatus, setKycStatus] = useState<any>(null);
+
+  const handleKycSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsKycSubmitting(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        kyc: {
+          ...kycForm,
+          status: 'Pending',
+          submittedAt: serverTimestamp()
+        }
+      });
+      setKycStatus({ type: 'success', message: 'KYC documents submitted successfully for review.' });
+    } catch (error) {
+      console.error("KYC Error:", error);
+      setKycStatus({ type: 'error', message: 'Failed to submit KYC documents.' });
+    } finally {
+      setIsKycSubmitting(false);
+    }
+  };
+  const [aiNiche, setAiNiche] = useState('');
+  const [aiTitle, setAiTitle] = useState('');
+  const [aiResults, setAiResults] = useState<any>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [activeAiTool, setActiveAiTool] = useState<'ideas' | 'optimize' | 'thumbnails' | null>(null);
+
+  const handleGenerateIdeas = async () => {
+    if (!aiNiche) return;
+    setIsAiLoading(true);
+    setActiveAiTool('ideas');
+    try {
+      const ideas = await generateVideoIdeas(aiNiche);
+      setAiResults(ideas);
+    } catch (error) {
+      console.error("AI Error:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleOptimizeTitle = async () => {
+    if (!aiTitle) return;
+    setIsAiLoading(true);
+    setActiveAiTool('optimize');
+    try {
+      const titles = await optimizeTitle(aiTitle);
+      setAiResults(titles);
+    } catch (error) {
+      console.error("AI Error:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleSuggestThumbnails = async () => {
+    if (!aiTitle) return;
+    setIsAiLoading(true);
+    setActiveAiTool('thumbnails');
+    try {
+      const concepts = await suggestThumbnails(aiTitle);
+      setAiResults(concepts);
+    } catch (error) {
+      console.error("AI Error:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   // Selected Claim State
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
   const [claimDetailsTab, setClaimDetailsTab] = useState<'overview' | 'history'>('overview');
@@ -146,7 +339,10 @@ function App() {
       return response.json();
     }
     const text = await response.text();
-    throw new Error(`Expected JSON but received ${contentType || 'unknown'}. Content: ${text.substring(0, 100)}...`);
+    if (response.status === 403) {
+      throw new Error("Access Forbidden (403). This usually means the API is not enabled or the request was blocked by a security policy.");
+    }
+    throw new Error(`Expected JSON but received ${contentType || 'unknown'}. This often happens when the server returns an error page. Status: ${response.status}`);
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -270,7 +466,7 @@ function App() {
       fetchWithJson('/api/youtube/stats')
         .then(data => {
           if (data.success) {
-            setYoutubeStats(data.data);
+            setYoutubeStats({ ...data.data, isMock: data.isMock });
           } else {
             setYoutubeError(data.message || 'Failed to fetch YouTube stats');
           }
@@ -294,7 +490,7 @@ function App() {
   }, [user, userProfile]);
 
   useEffect(() => {
-    if (user && activeTab === 'creators') {
+    if (user && activeTab === 'creators' && isStaff) {
       setIsCreatorsLoading(true);
       const q = query(collection(db, 'creators'), orderBy('createdAt', 'desc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -310,10 +506,10 @@ function App() {
       });
       return () => unsubscribe();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, isStaff]);
 
   useEffect(() => {
-    if (user && activeTab === 'applications') {
+    if (user && activeTab === 'applications' && isStaff) {
       setIsApplicationsLoading(true);
       const q = query(collection(db, 'applications'), orderBy('createdAt', 'desc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -329,7 +525,7 @@ function App() {
       });
       return () => unsubscribe();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, isStaff]);
 
   useEffect(() => {
     if (user && activeTab === 'earnings') {
@@ -373,10 +569,11 @@ function App() {
     { id: 'video-distribution', title: 'Video Distribution', description: 'Distribute your videos across YouTube and Facebook', icon: Video, badge: null, color: 'text-red-500', bg: 'bg-red-50' },
     { id: 'audio-distribution', title: 'Audio Distribution', description: 'Share your music on 40+ platforms', icon: Music, badge: '+35', color: 'text-sky-500', bg: 'bg-sky-50' },
     { id: 'podcast-distribution', title: 'Podcast Distribution', description: 'Publish your podcasts to all major platforms', icon: Mic, badge: '+20', color: 'text-violet-500', bg: 'bg-violet-50' },
-    { id: 'royalty-nft', title: 'Royalty NFT', description: 'Create and manage royalty NFTs for your content', icon: Hexagon, badge: null, color: 'text-amber-500', bg: 'bg-amber-50' },
+    { id: 'ai-ideas', title: 'AI Video Ideas', description: 'Generate viral video ideas for your niche', icon: Lightbulb, badge: 'AI', color: 'text-amber-500', bg: 'bg-amber-50' },
+    { id: 'ai-optimize', title: 'AI Title Optimizer', description: 'Optimize your video titles for higher CTR', icon: Zap, badge: 'AI', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+    { id: 'ai-thumbnails', title: 'AI Thumbnail Suggester', description: 'Get professional thumbnail concepts', icon: ImageIcon, badge: 'AI', color: 'text-pink-500', bg: 'bg-pink-50' },
     { id: 'brand-campaigns', title: 'Brand Campaigns', description: 'Apply for and manage your partnership campaigns', icon: Megaphone, badge: null, color: 'text-emerald-500', bg: 'bg-emerald-50' },
     { id: 'campaign-calendar', title: 'Campaign Calendar', description: 'Schedule and manage your campaign deliverables', icon: Calendar, badge: null, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-    { id: 'ai-tools', title: 'AI Tools', description: 'Enhance your content with AI-powered tools', icon: Sparkles, badge: null, color: 'text-pink-500', bg: 'bg-pink-50' },
     { id: 'finance-management', title: 'Finance Management', description: 'Track earnings and payments', icon: DollarSign, badge: null, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
@@ -465,7 +662,7 @@ function App() {
       if (!response.ok) throw new Error('Failed to send invite');
       
       setInviteStatus({ type: 'success', message: 'Invite sent successfully!' });
-      setInviteForm({ channelName: '', email: '', message: '' });
+      setInviteForm({ channelName: '', channelUrl: '', email: '', message: '' });
     } catch (error) {
       setInviteStatus({ type: 'error', message: 'Failed to send invite. Please try again.' });
     } finally {
@@ -593,6 +790,16 @@ function App() {
     }
   };
 
+  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'payouts', payoutId), {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error updating payout status:", error);
+    }
+  };
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     if (!isAdmin) return;
     try {
@@ -921,6 +1128,49 @@ function App() {
     }
   };
 
+  const handleAddEarning = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEarning.creatorId || !newEarning.totalRevenue) return;
+
+    setIsAddingEarning(true);
+    try {
+      const response = await fetch('/api/earnings/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newEarning,
+          totalRevenue: Number(newEarning.totalRevenue),
+          creatorPercentage: Number(newEarning.creatorPercentage),
+          mcnPercentage: Number(newEarning.mcnPercentage),
+          bonusPercentage: Number(newEarning.bonusPercentage)
+        })
+      });
+
+      if (response.ok) {
+        setShowAddEarningModal(false);
+        setNewEarning({
+          creatorId: '',
+          channelId: '',
+          month: new Date().toISOString().slice(0, 7),
+          totalRevenue: '',
+          creatorPercentage: 70,
+          mcnPercentage: 20,
+          bonusPercentage: 10,
+          status: 'Accrued'
+        });
+        alert("Earning record added and split calculated successfully!");
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add earning");
+      }
+    } catch (error: any) {
+      console.error("Error adding earning:", error);
+      alert("Failed to add earning record: " + error.message);
+    } finally {
+      setIsAddingEarning(false);
+    }
+  };
+
   const handleNotifyCopyright = async (claim: any) => {
     // For demo purposes, we'll use a placeholder email if not found
     const creator = creators.find(c => c.id === claim.creatorId || c.channelName === claim.claimant);
@@ -1142,34 +1392,38 @@ function App() {
             <LayoutDashboard className="w-5 h-5 mr-3" />
             Dashboard
           </button>
-          <button 
-            onClick={() => setActiveTab('creators')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'creators' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <Users className="w-5 h-5 mr-3" />
-            Creators
-          </button>
-          <button 
-            onClick={() => setActiveTab('channels')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'channels' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <Video className="w-5 h-5 mr-3" />
-            Channels
-          </button>
-          <button 
-            onClick={() => setActiveTab('applications')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'applications' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <FileText className="w-5 h-5 mr-3" />
-            Applications
-          </button>
-          <button 
-            onClick={() => setActiveTab('invites')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'invites' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <MailPlus className="w-5 h-5 mr-3" />
-            Channel Invites
-          </button>
+          {isStaff && (
+            <>
+              <button 
+                onClick={() => setActiveTab('creators')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'creators' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Creators
+              </button>
+              <button 
+                onClick={() => setActiveTab('channels')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'channels' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Video className="w-5 h-5 mr-3" />
+                Channels
+              </button>
+              <button 
+                onClick={() => setActiveTab('applications')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'applications' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <FileText className="w-5 h-5 mr-3" />
+                Applications
+              </button>
+              <button 
+                onClick={() => setActiveTab('invites')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'invites' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <MailPlus className="w-5 h-5 mr-3" />
+                Channel Invites
+              </button>
+            </>
+          )}
           <button 
             onClick={() => setActiveTab('tools')}
             className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'tools' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
@@ -1217,13 +1471,22 @@ function App() {
             </>
           )}
           {isCreator && (
-            <button 
-              onClick={() => setActiveTab('videos')}
-              className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'videos' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-            >
-              <Video className="w-5 h-5 mr-3" />
-              My Videos
-            </button>
+            <>
+              <button 
+                onClick={() => setActiveTab('videos')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'videos' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Video className="w-5 h-5 mr-3" />
+                My Videos
+              </button>
+              <button 
+                onClick={() => setActiveTab('withdrawals')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'withdrawals' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <DollarSign className="w-5 h-5 mr-3" />
+                Withdrawals
+              </button>
+            </>
           )}
           <button 
             onClick={() => setActiveTab('settings')}
@@ -1348,6 +1611,94 @@ function App() {
                 </div>
               </div>
 
+              {/* Revenue & Growth Chart */}
+              <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 tracking-tight">Revenue Growth</h3>
+                      <p className="text-xs text-slate-500">Monthly revenue performance across the network</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 bg-indigo-500 rounded-full"></span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Revenue</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={[
+                        { name: 'Jan', revenue: 4000 },
+                        { name: 'Feb', revenue: 3000 },
+                        { name: 'Mar', revenue: 2000 },
+                        { name: 'Apr', revenue: 2780 },
+                        { name: 'May', revenue: 1890 },
+                        { name: 'Jun', revenue: 2390 },
+                        { name: 'Jul', revenue: 3490 },
+                      ]}>
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{fontSize: 10, fill: '#94a3b8'}}
+                          dy={10}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{fontSize: 10, fill: '#94a3b8'}}
+                          tickFormatter={(value) => `$${value}`}
+                        />
+                        <Tooltip 
+                          contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="revenue" 
+                          stroke="#6366f1" 
+                          strokeWidth={3}
+                          fillOpacity={1} 
+                          fill="url(#colorRevenue)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-6">Top Niches</h3>
+                  <div className="space-y-6">
+                    {[
+                      { name: 'Gaming', percentage: 45, color: 'bg-indigo-500' },
+                      { name: 'Vlogs', percentage: 25, color: 'bg-emerald-500' },
+                      { name: 'Tech', percentage: 15, color: 'bg-amber-500' },
+                      { name: 'Music', percentage: 10, color: 'bg-rose-500' },
+                      { name: 'Others', percentage: 5, color: 'bg-slate-400' },
+                    ].map((niche) => (
+                      <div key={niche.name}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-slate-700">{niche.name}</span>
+                          <span className="text-xs font-bold text-slate-500">{niche.percentage}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${niche.color} transition-all duration-1000`} 
+                            style={{ width: `${niche.percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {youtubeError && (
                 <div className="mt-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
@@ -1392,9 +1743,15 @@ function App() {
                         <p className="text-xs text-slate-500 font-medium">Primary Network Channel</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-full border border-red-100">
-                      <Video className="w-4 h-4" />
-                      <span className="text-xs font-bold uppercase tracking-wider">YouTube Live Data</span>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+                      youtubeStats.isMock 
+                        ? 'bg-amber-50 text-amber-600 border-amber-100' 
+                        : 'bg-red-50 text-red-600 border-red-100'
+                    }`}>
+                      {youtubeStats.isMock ? <AlertTriangle className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                      <span className="text-xs font-bold uppercase tracking-wider">
+                        {youtubeStats.isMock ? 'Demo Mode' : 'YouTube Live Data'}
+                      </span>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
@@ -1417,6 +1774,15 @@ function App() {
                       <p className="text-[10px] text-slate-400 mt-1">Uploaded to primary channel</p>
                     </div>
                   </div>
+                  {youtubeStats.isMock && (
+                    <div className="px-6 py-3 bg-amber-50/50 border-t border-slate-100 flex items-center gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      <p className="text-[10px] font-medium text-amber-700">
+                        The YouTube Data API is not enabled in your Google Cloud project. Showing demo data. 
+                        <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer" className="ml-1 underline">Enable API</a>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1550,6 +1916,165 @@ function App() {
             </div>
           )}
 
+          {activeTab === 'ai-ideas' && (
+            <div className="max-w-4xl mx-auto space-y-8">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                    <Lightbulb className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">AI Video Ideas Generator</h3>
+                    <p className="text-slate-500 text-sm">Generate viral video concepts for your YouTube niche.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <input 
+                    type="text"
+                    placeholder="Enter your niche (e.g. Tech, Gaming, Cooking)..."
+                    className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                    value={aiNiche}
+                    onChange={(e) => setAiNiche(e.target.value)}
+                  />
+                  <button 
+                    onClick={handleGenerateIdeas}
+                    disabled={isAiLoading || !aiNiche}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    Generate Ideas
+                  </button>
+                </div>
+              </div>
+
+              {aiResults && activeAiTool === 'ideas' && (
+                <div className="grid grid-cols-1 gap-6">
+                  {aiResults.map((idea: any, idx: number) => (
+                    <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:border-indigo-200 transition-all">
+                      <h4 className="text-lg font-bold text-slate-900 mb-2">{idea.title}</h4>
+                      <p className="text-sm text-slate-600 leading-relaxed">{idea.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'ai-optimize' && (
+            <div className="max-w-4xl mx-auto space-y-8">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                    <Zap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">AI Title Optimizer</h3>
+                    <p className="text-slate-500 text-sm">Optimize your video titles for maximum CTR and SEO.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <input 
+                    type="text"
+                    placeholder="Enter your current video title..."
+                    className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                    value={aiTitle}
+                    onChange={(e) => setAiTitle(e.target.value)}
+                  />
+                  <button 
+                    onClick={handleOptimizeTitle}
+                    disabled={isAiLoading || !aiTitle}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    Optimize Title
+                  </button>
+                </div>
+              </div>
+
+              {aiResults && activeAiTool === 'optimize' && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                    <h4 className="font-bold text-slate-900">Optimized Alternatives</h4>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {aiResults.map((title: string, idx: number) => (
+                      <div key={idx} className="p-4 flex items-center justify-between group hover:bg-slate-50 transition-all">
+                        <p className="text-sm font-medium text-slate-700">{title}</p>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(title);
+                          }}
+                          className="text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'ai-thumbnails' && (
+            <div className="max-w-4xl mx-auto space-y-8">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-pink-50 text-pink-500 flex items-center justify-center">
+                    <ImageIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">AI Thumbnail Suggester</h3>
+                    <p className="text-slate-500 text-sm">Get creative thumbnail concepts for your video.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <input 
+                    type="text"
+                    placeholder="Enter your video title..."
+                    className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                    value={aiTitle}
+                    onChange={(e) => setAiTitle(e.target.value)}
+                  />
+                  <button 
+                    onClick={handleSuggestThumbnails}
+                    disabled={isAiLoading || !aiTitle}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    Suggest Concepts
+                  </button>
+                </div>
+              </div>
+
+              {aiResults && activeAiTool === 'thumbnails' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {aiResults.map((concept: any, idx: number) => (
+                    <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                      <div className="p-4 bg-slate-50 border-b border-slate-100">
+                        <h4 className="font-bold text-slate-900 text-sm">{concept.concept}</h4>
+                      </div>
+                      <div className="p-4 flex-1 space-y-4">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visuals</p>
+                          <p className="text-xs text-slate-600 leading-relaxed">{concept.visuals}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Text Overlay</p>
+                          <p className="text-xs font-bold text-indigo-600">{concept.text}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Colors</p>
+                          <p className="text-xs text-slate-600">{concept.colors}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'invites' && (
             <div className="max-w-3xl mx-auto">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -1595,6 +2120,37 @@ function App() {
                           className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
                           placeholder="creator@example.com"
                         />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="channelUrl" className="block text-sm font-medium text-slate-700 mb-2">
+                        Channel URL
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          id="channelUrl"
+                          required
+                          value={inviteForm.channelUrl}
+                          onChange={(e) => setInviteForm({...inviteForm, channelUrl: e.target.value})}
+                          className="flex-1 px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                          placeholder="https://www.youtube.com/@channelname"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSyncChannel}
+                          disabled={isSyncing}
+                          className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
+                          title="Sync channel details from URL"
+                        >
+                          {isSyncing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                          <span className="hidden sm:inline">Sync</span>
+                        </button>
                       </div>
                     </div>
                     
@@ -2289,6 +2845,15 @@ function App() {
                   <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Earnings Reports</h3>
                   <p className="text-slate-500 text-sm mt-1">Monitor monthly ad revenue and brand deal earnings for all creators.</p>
                 </div>
+                {isStaff && (
+                  <button 
+                    onClick={() => setShowAddEarningModal(true)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Earning
+                  </button>
+                )}
               </div>
 
               {/* Summary Cards */}
@@ -2352,16 +2917,17 @@ function App() {
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
                         <th className="px-6 py-4 font-semibold">Creator</th>
                         <th className="px-6 py-4 font-semibold">Month</th>
-                        <th className="px-6 py-4 font-semibold">Ad Revenue</th>
-                        <th className="px-6 py-4 font-semibold">Brand Deals</th>
-                        <th className="px-6 py-4 font-semibold">Total</th>
+                        <th className="px-6 py-4 font-semibold">Total Revenue</th>
+                        <th className="px-6 py-4 font-semibold">Creator Share</th>
+                        <th className="px-6 py-4 font-semibold">MCN Share</th>
+                        <th className="px-6 py-4 font-semibold">Bonus Pool</th>
                         <th className="px-6 py-4 font-semibold">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {isEarningsLoading ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center">
+                          <td colSpan={7} className="px-6 py-12 text-center">
                             <div className="flex flex-col items-center gap-3">
                               <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                               <p className="text-sm text-slate-500">Loading earnings...</p>
@@ -2373,7 +2939,7 @@ function App() {
                         (!earningsFilters.creatorId || e.creatorId === earningsFilters.creatorId)
                       ).length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                             No earnings records found matching your filters.
                           </td>
                         </tr>
@@ -2397,9 +2963,19 @@ function App() {
                                 </div>
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-700 font-medium">{record.month}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">${record.adRevenue?.toLocaleString()}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">${record.brandDealRevenue?.toLocaleString()}</td>
                               <td className="px-6 py-4 text-sm font-bold text-slate-900">${record.totalRevenue?.toLocaleString()}</td>
+                              <td className="px-6 py-4 text-sm text-emerald-600 font-semibold">
+                                ${record.creatorShare?.toLocaleString()}
+                                <span className="text-[10px] text-slate-400 ml-1">({record.creatorPercentage}%)</span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-indigo-600 font-semibold">
+                                ${record.mcnShare?.toLocaleString()}
+                                <span className="text-[10px] text-slate-400 ml-1">({record.mcnPercentage}%)</span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-amber-600 font-semibold">
+                                ${record.bonusPool?.toLocaleString()}
+                                <span className="text-[10px] text-slate-400 ml-1">({record.bonusPercentage}%)</span>
+                              </td>
                               <td className="px-6 py-4">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
                                   record.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
@@ -2420,6 +2996,69 @@ function App() {
             </div>
           )}
 
+          {activeTab === 'withdrawals' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800 tracking-tight">My Withdrawals</h3>
+                  <p className="text-slate-500 text-sm mt-1">Request and track your earnings withdrawals.</p>
+                </div>
+                <button 
+                  onClick={() => setShowWithdrawalModal(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Request Withdrawal
+                </button>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-6 py-4 font-semibold">Amount</th>
+                        <th className="px-6 py-4 font-semibold">Method</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
+                        <th className="px-6 py-4 font-semibold">Date</th>
+                        <th className="px-6 py-4 font-semibold">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {payouts.filter(p => p.creatorId === user?.uid).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                            You haven't made any withdrawal requests yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        payouts.filter(p => p.creatorId === user?.uid).map((payout) => (
+                          <tr key={payout.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-bold text-slate-900">${payout.amount?.toLocaleString()}</td>
+                            <td className="px-6 py-4 text-sm text-slate-700">{payout.method}</td>
+                            <td className="px-6 py-4">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                payout.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                payout.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                payout.status === 'Rejected' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                              }`}>
+                                {payout.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500">
+                              {payout.createdAt?.toDate ? payout.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600 truncate max-w-[200px]">{payout.details}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === 'payouts' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -2480,6 +3119,7 @@ function App() {
                         <th className="px-6 py-4 font-semibold">Status</th>
                         <th className="px-6 py-4 font-semibold">Date</th>
                         <th className="px-6 py-4 font-semibold">Reference</th>
+                        <th className="px-6 py-4 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2536,6 +3176,29 @@ function App() {
                                 {payout.timestamp?.toDate ? payout.timestamp.toDate().toLocaleDateString() : 'N/A'}
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-500 font-mono">{payout.reference || '---'}</td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {(payout.status === 'Pending' || payout.status === 'Processing') && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleUpdatePayoutStatus(payout.id, 'Paid')}
+                                        className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded text-xs font-bold hover:bg-emerald-100 transition-colors"
+                                      >
+                                        Approve
+                                      </button>
+                                      <button 
+                                        onClick={() => handleUpdatePayoutStatus(payout.id, 'Rejected')}
+                                        className="px-3 py-1 bg-red-50 text-red-600 rounded text-xs font-bold hover:bg-red-100 transition-colors"
+                                      >
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
+                                  <button className="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <Search className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           );
                         })
@@ -2553,6 +3216,88 @@ function App() {
                 <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Settings & Administration</h3>
                 <p className="text-slate-500 text-sm mt-1">Manage system preferences and user permissions.</p>
               </div>
+
+              {/* KYC Verification Section */}
+              {isCreator && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                    <UserCheck className="w-5 h-5 text-indigo-600" />
+                    <h4 className="font-bold text-slate-900">KYC Verification</h4>
+                  </div>
+                  <div className="p-6">
+                    {userProfile?.kyc?.status === 'Verified' ? (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-4 text-emerald-800">
+                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                        <div>
+                          <p className="font-bold">Account Verified</p>
+                          <p className="text-xs">Your identity has been successfully verified.</p>
+                        </div>
+                      </div>
+                    ) : userProfile?.kyc?.status === 'Pending' ? (
+                      <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-center gap-4 text-amber-800">
+                        <Clock className="w-6 h-6 text-amber-500" />
+                        <div>
+                          <p className="font-bold">Verification Pending</p>
+                          <p className="text-xs">Our team is currently reviewing your documents.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleKycSubmit} className="space-y-4">
+                        {kycStatus && (
+                          <div className={`p-4 rounded-lg text-sm font-medium ${kycStatus.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
+                            {kycStatus.message}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ID Type</label>
+                            <select 
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+                              value={kycForm.idType}
+                              onChange={(e) => setKycForm({...kycForm, idType: e.target.value})}
+                            >
+                              <option value="National ID">National ID</option>
+                              <option value="Passport">Passport</option>
+                              <option value="Driving License">Driving License</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ID Number</label>
+                            <input 
+                              type="text"
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+                              placeholder="Enter your ID number"
+                              value={kycForm.idNumber}
+                              onChange={(e) => setKycForm({...kycForm, idNumber: e.target.value})}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload ID Document (Image URL)</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="url"
+                              className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+                              placeholder="Paste image URL of your ID"
+                              value={kycForm.idImage}
+                              onChange={(e) => setKycForm({...kycForm, idImage: e.target.value})}
+                              required
+                            />
+                            <button 
+                              type="submit"
+                              disabled={isKycSubmitting}
+                              className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all disabled:opacity-50"
+                            >
+                              {isKycSubmitting ? 'Submitting...' : 'Submit KYC'}
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {isAdmin && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -3191,7 +3936,76 @@ function App() {
         </div>
       )}
 
-      {/* Create Payout Modal */}
+      {/* Withdrawal Modal */}
+      {showWithdrawalModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Request Withdrawal</h3>
+              <button onClick={() => setShowWithdrawalModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleWithdrawalSubmit} className="p-8 space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount ($)</label>
+                <input 
+                  type="number"
+                  required
+                  min="50"
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                  placeholder="Min $50.00"
+                  value={withdrawalForm.amount}
+                  onChange={(e) => setWithdrawalForm({...withdrawalForm, amount: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Payment Method</label>
+                <select 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                  value={withdrawalForm.method}
+                  onChange={(e) => setWithdrawalForm({...withdrawalForm, method: e.target.value})}
+                >
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="bKash">bKash</option>
+                  <option value="Payoneer">Payoneer</option>
+                  <option value="PayPal">PayPal</option>
+                  <option value="Crypto (USDT)">Crypto (USDT)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Payment Details</label>
+                <textarea 
+                  required
+                  rows={3}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all resize-none"
+                  placeholder="Enter account number, bank details, or wallet address..."
+                  value={withdrawalForm.details}
+                  onChange={(e) => setWithdrawalForm({...withdrawalForm, details: e.target.value})}
+                ></textarea>
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowWithdrawalModal(false)}
+                  className="flex-1 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isWithdrawing}
+                  className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isWithdrawing ? <Loader2 className="w-5 h-5 animate-spin" /> : <DollarSign className="w-5 h-5" />}
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {showCreatePayoutModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
@@ -3512,6 +4326,136 @@ function App() {
         </div>
       )}
 
+      {/* Add Earning Modal */}
+      {showAddEarningModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Add New Earning Report</h3>
+              <button onClick={() => setShowAddEarningModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleAddEarning} className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Select Creator</label>
+                  <select 
+                    required
+                    value={newEarning.creatorId}
+                    onChange={(e) => setNewEarning({...newEarning, creatorId: e.target.value})}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  >
+                    <option value="">Choose a creator...</option>
+                    {creators.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.channelName})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Month</label>
+                    <input 
+                      type="month" 
+                      required
+                      value={newEarning.month}
+                      onChange={(e) => setNewEarning({...newEarning, month: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Total Revenue ($)</label>
+                    <input 
+                      type="number" 
+                      required
+                      step="0.01"
+                      value={newEarning.totalRevenue}
+                      onChange={(e) => setNewEarning({...newEarning, totalRevenue: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-200">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Split Engine Configuration (%)</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Creator</label>
+                      <input 
+                        type="number" 
+                        value={newEarning.creatorPercentage}
+                        onChange={(e) => setNewEarning({...newEarning, creatorPercentage: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">MCN</label>
+                      <input 
+                        type="number" 
+                        value={newEarning.mcnPercentage}
+                        onChange={(e) => setNewEarning({...newEarning, mcnPercentage: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Bonus</label>
+                      <input 
+                        type="number" 
+                        value={newEarning.bonusPercentage}
+                        onChange={(e) => setNewEarning({...newEarning, bonusPercentage: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold">
+                    <span className={newEarning.creatorPercentage + newEarning.mcnPercentage + newEarning.bonusPercentage === 100 ? 'text-emerald-600' : 'text-red-600'}>
+                      Total: {newEarning.creatorPercentage + newEarning.mcnPercentage + newEarning.bonusPercentage}%
+                    </span>
+                    {newEarning.creatorPercentage + newEarning.mcnPercentage + newEarning.bonusPercentage !== 100 && (
+                      <span className="text-red-600">Must equal 100%</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                  <select 
+                    value={newEarning.status}
+                    onChange={(e) => setNewEarning({...newEarning, status: e.target.value})}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  >
+                    <option value="Accrued">Accrued</option>
+                    <option value="Ready">Ready</option>
+                    <option value="Paid">Paid</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowAddEarningModal(false)} 
+                  className="px-6 py-2.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isAddingEarning || (newEarning.creatorPercentage + newEarning.mcnPercentage + newEarning.bonusPercentage !== 100)}
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 flex items-center"
+                >
+                  {isAddingEarning ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Processing...
+                    </>
+                  ) : 'Add Earning Report'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Add Asset Modal */}
       {showAddAssetModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">

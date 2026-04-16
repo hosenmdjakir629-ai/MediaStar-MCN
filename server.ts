@@ -18,6 +18,8 @@ import inviteRoutes from './routes/inviteRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import adminRoutes from './routes/adminRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import copyrightRoutes from './routes/copyrightRoutes';
+import applicationRoutes from './routes/applicationRoutes';
 
 dotenv.config();
 
@@ -49,6 +51,8 @@ async function startServer() {
   app.use('/api/notify', notificationRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/copyright', copyrightRoutes);
+  app.use('/api/applications', applicationRoutes);
 
   // API routes FIRST
   app.get('/api/health', (req, res) => {

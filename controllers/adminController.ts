@@ -45,3 +45,32 @@ export const updateWithdrawalStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to update withdrawal status' });
   }
 };
+
+export const getAllWithdrawals = async (req: Request, res: Response) => {
+  try {
+    const withdrawals = await Withdrawal.find().populate('userId');
+    res.json(withdrawals);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch withdrawals' });
+  }
+};
+
+export const getAllCreators = async (req: Request, res: Response) => {
+  // Placeholder: Implement creator fetching logic
+  res.json({ message: 'Not implemented' });
+};
+
+export const getSystemLogs = async (req: Request, res: Response) => {
+  // Placeholder: Implement log fetching logic
+  res.json({ message: 'Not implemented' });
+};
+
+export const getFraudAlerts = async (req: Request, res: Response) => {
+  // Placeholder: Implement fraud alert fetching logic
+  res.json({ message: 'Not implemented' });
+};
+
+export const getManualOverrides = async (req: Request, res: Response) => {
+  // Placeholder: Implement manual override fetching logic
+  res.json({ message: 'Not implemented' });
+};

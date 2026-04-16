@@ -36,14 +36,28 @@ export const authCallback = async (req: Request, res: Response) => {
   }
 };
 
+const VALID_API_KEY = 'AIzaSyCD1m6VKuh9YZW0s22-S0PLKBaL_5p7JZY';
+const VALID_CHANNEL_ID = 'UCBT2xQUYrJfk3jZt-tsZ6ow';
+
+const validateYouTubeConfig = (apiKey: string | undefined, channelId: string | undefined) => {
+  if (!apiKey || !channelId) {
+    return 'YouTube API Key or Channel ID not configured';
+  }
+  if (apiKey === VALID_API_KEY || channelId === VALID_CHANNEL_ID) {
+    return 'Please configure your own YouTube API Key and Channel ID. Placeholder values detected.';
+  }
+  return null;
+};
+
 export const getStats = async (req: Request, res: Response) => {
   const apiKey = process.env.YOUTUBE_API_KEY;
   const channelId = process.env.CHANNEL_ID;
 
-  if (!apiKey || !channelId) {
+  const configError = validateYouTubeConfig(apiKey, channelId);
+  if (configError) {
     return res.status(200).json({ 
       success: false, 
-      message: 'YouTube API Key or Channel ID not configured' 
+      message: configError 
     });
   }
 
@@ -113,6 +127,10 @@ export const getStats = async (req: Request, res: Response) => {
 export const getVideos = async (req: Request, res: Response) => {
   const apiKey = process.env.YOUTUBE_API_KEY;
   const channelId = process.env.CHANNEL_ID;
+  const configError = validateYouTubeConfig(apiKey, channelId);
+  if (configError) {
+    return res.status(200).json({ error: configError });
+  }
   try {
     const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=6`;
     const response = await fetch(url);
@@ -167,6 +185,9 @@ export const getVideos = async (req: Request, res: Response) => {
 
 export const searchVideos = async (req: Request, res: Response) => {
   const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey || apiKey === VALID_API_KEY) {
+    return res.status(200).json({ error: 'YouTube API Key not configured or invalid' });
+  }
   try {
     const q = encodeURIComponent(req.params.query as string);
     const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&q=${q}&part=snippet&maxResults=6`;
@@ -213,6 +234,9 @@ export const searchVideos = async (req: Request, res: Response) => {
 
 export const getMcnChannels = async (req: Request, res: Response) => {
   const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey || apiKey === VALID_API_KEY) {
+    return res.status(200).json({ error: 'YouTube API Key not configured or invalid' });
+  }
   try {
     const ids = req.body.channels || [];
     let results = [];

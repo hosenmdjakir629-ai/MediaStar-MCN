@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import Referral from '../models/Referral';
+import { adminDb } from '../lib/firebaseAdmin';
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -13,14 +14,11 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendInvite = async (req: Request, res: Response) => {
-  const { channelName, email, message } = req.body;
+  const { channelName, email, message, templateId, templateSubject, templateBody } = req.body;
   
   try {
-    const mailOptions = {
-      from: process.env.SMTP_USER ? `"OrbitX MCN" <${process.env.SMTP_USER}>` : '"OrbitX MCN" <invites@orbitx.com>',
-      to: email,
-      subject: `Exclusive Invitation to Join OrbitX MCN - ${channelName}`,
-      html: `
+    let subject = `Exclusive Invitation to Join OrbitX MCN - ${channelName}`;
+    let htmlBody = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
           <div style="text-align: center; margin-bottom: 20px;">
             <h1 style="color: #4f46e5; margin: 0;">OrbitX MCN</h1>
@@ -50,7 +48,25 @@ export const sendInvite = async (req: Request, res: Response) => {
           <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">We look forward to potentially working together to take your channel to the next level!</p>
           <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Best regards,<br/><strong>The OrbitX Team</strong></p>
         </div>
-      `
+      `;
+
+    if (templateSubject && templateBody) {
+      subject = templateSubject.replace(/{{channelName}}/g, channelName);
+      
+      // Replace variables in body
+      let processedBody = templateBody
+        .replace(/{{channelName}}/g, channelName)
+        .replace(/{{message}}/g, message || '')
+        .replace(/{{inviteLink}}/g, 'https://orbitx-mcn.com/apply');
+        
+      htmlBody = processedBody;
+    }
+
+    const mailOptions = {
+      from: process.env.SMTP_USER ? `"OrbitX MCN" <${process.env.SMTP_USER}>` : '"OrbitX MCN" <invites@orbitx.com>',
+      to: email,
+      subject: subject,
+      html: htmlBody
     };
 
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {

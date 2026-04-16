@@ -16,4 +16,4 @@ const withdrawalSchema = new Schema<IWithdrawal>({
   date: { type: Date, default: Date.now }
 });
 
-export default mongoose.model<IWithdrawal>('Withdrawal', withdrawalSchema);
+export default mongoose.models.Withdrawal || mongoose.model<IWithdrawal>('Withdrawal', withdrawalSchema);

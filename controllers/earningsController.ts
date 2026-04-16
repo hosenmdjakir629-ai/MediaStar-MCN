@@ -14,7 +14,8 @@ export const getMyEarnings = async (req: any, res: Response) => {
 export const addEarning = async (req: Request, res: Response) => {
   try {
     const { 
-      userId, 
+      userId,
+      creatorId, 
       channelId, 
       totalRevenue, 
       creatorPercentage = 70, 
@@ -22,13 +23,19 @@ export const addEarning = async (req: Request, res: Response) => {
       bonusPercentage = 10 
     } = req.body;
 
+    const targetUserId = userId || creatorId;
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'User ID or Creator ID is required' });
+    }
+
     // Split Engine Logic
     const creatorShare = (totalRevenue * creatorPercentage) / 100;
     const mcnShare = (totalRevenue * mcnPercentage) / 100;
     const bonusPool = (totalRevenue * bonusPercentage) / 100;
 
     const data = await Earnings.create({
-      userId,
+      userId: targetUserId,
       channelId,
       totalRevenue,
       creatorShare,

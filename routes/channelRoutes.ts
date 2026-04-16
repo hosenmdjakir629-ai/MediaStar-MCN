@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.get('/my', authMiddleware, channelController.getMyChannels);
 router.post('/link', authMiddleware, channelController.linkChannel);
+router.post('/sync', authMiddleware, channelController.syncChannel);
 
 export default router;

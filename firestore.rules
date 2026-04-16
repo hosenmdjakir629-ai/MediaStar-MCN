@@ -1,7 +1,30 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - role: string (required, 'admin' or 'creator')
+    //   - displayName: string (optional)
+    //
+    // Collection: withdrawals
+    // Document ID: withdrawalId
+    // Fields:
+    //   - userId: string (required)
+    //   - amount: number (required, positive)
+    //   - method: string (required)
+    //   - details: string (optional)
+    //   - status: string (required, 'pending', 'approved', 'rejected', 'paid')
+    //   - date: timestamp (required)
+    //
+    // ===============================================================
+
     // ===============================================================
     // Helper Functions
     // ===============================================================
@@ -9,187 +32,89 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email == "hosenmdjakir629@gmail.com" || 
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
-    }
-
-    function isManager() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
-    }
-
-    function isStaff() {
-      return isAdmin() || isManager();
-    }
-
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "hosenmdjakir629@gmail.com");
     }
 
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-
-    function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
-    }
-
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['uid', 'email', 'role', 'name', 'photoURL', 'createdAt']) &&
-             data.uid is string && data.email is string && isValidEmail(data.email) &&
-             data.role in ['admin', 'editor', 'viewer', 'creator'];
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'creator'];
     }
 
-    function isValidCreator(data) {
-      return data.name is string && data.name.size() < 100 &&
-             (!('email' in data) || isValidEmail(data.email)) &&
-             (!('status' in data) || data.status in ['Active', 'Pending', 'Suspended', 'Inactive', 'Processing']) &&
-             (!('videos' in data) || data.videos is list) &&
-             (!('adminNotes' in data) || data.adminNotes is string) &&
-             (!('payoutOption' in data) || data.payoutOption in ['Bank Transfer', 'PayPal', 'Bkash', 'Nagad']) &&
-             (!('payoutDetails' in data) || data.payoutDetails is string) &&
-             (!('contract' in data) || (data.contract.startDate is string && data.contract.endDate is string && data.contract.revenueSplit is number)) &&
-             (!('kyc' in data) || (data.kyc.status in ['Pending', 'Verified', 'Rejected'] && data.kyc.documentUrl is string)) &&
-             (!('tier' in data) || data.tier in ['Silver', 'Gold', 'VIP']);
-    }
-
-    function isValidNotification(data) {
-      return data.name is string && data.name.size() < 100 &&
-             data.status in ['unread', 'read'] &&
-             data.timestamp is string;
-    }
-
-    function isValidApplication(data) {
-      return data.name is string && data.name.size() < 100 &&
-             data.email is string && isValidEmail(data.email) &&
-             data.status in ['Pending', 'Approved', 'Rejected', 'More Info Needed'];
-    }
-
-    function isValidChannel(data) {
-      return data.name is string && data.name.size() < 100 &&
-             data.youtubeChannelId is string &&
-             data.type in ['Affiliate', 'Owned'] &&
-             data.status in ['Pending', 'Active', 'Released'] &&
-             data.ownerId is string &&
-             data.createdAt is string;
-    }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
-    match /channels/{channelId} {
-      allow read: if isStaff() || (isAuthenticated() && resource.data.ownerId == request.auth.uid);
-      allow create: if isAuthenticated() && isValidChannel(request.resource.data);
-      allow update: if isStaff() || (isAuthenticated() && resource.data.ownerId == request.auth.uid && isValidChannel(request.resource.data));
-      allow delete: if isAdmin();
+    function isValidWithdrawal(data) {
+      return data.keys().hasAll(['userId', 'amount', 'method', 'status', 'date']) &&
+             data.userId is string &&
+             data.amount is number && data.amount > 0 &&
+             data.method is string &&
+             data.status in ['pending', 'approved', 'rejected', 'paid'] &&
+             data.date is timestamp;
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isStaff();
-      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isAdmin() || (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role);
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && isOwner(userId);
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
     }
 
+    match /withdrawals/{withdrawalId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidWithdrawal(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isAdmin() && isValidWithdrawal(request.resource.data);
+    }
+    
     match /creators/{creatorId} {
-      allow read: if isStaff() || (isAuthenticated() && resource.data.uid == request.auth.uid);
-      allow create: if true; // Allow public applications
-      allow update: if isStaff() || (isAuthenticated() && resource.data.uid == request.auth.uid && isValidCreator(request.resource.data));
-      allow delete: if isAdmin();
+      allow read: if isAuthenticated();
+      allow update: if isAdmin();
     }
-
-    match /notifications/{notificationId} {
-      allow read: if isStaff();
-      allow create: if true; // Allow public applications
-      allow update, delete: if isStaff();
-    }
-
+    
     match /applications/{applicationId} {
-      allow read: if isStaff();
-      allow create: if true; // Allow public applications
-      allow update: if isStaff() && isValidApplication(request.resource.data);
-      allow delete: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin();
+    }
+    
+    match /earnings/{earningId} {
+      allow read: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
+    }
+    
+    match /content_id_assets/{assetId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
     }
 
-    match /analytics/{analyticsId} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
-    }
-
-    match /earnings/{earningsId} {
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
-      allow write: if isAdmin();
+    match /claims/{claimId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
     }
 
     match /payouts/{payoutId} {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
-      allow create: if isAuthenticated() && (isAdmin() || request.resource.data.creatorId == request.auth.uid);
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    function isValidClaim(data) {
-      return data.id is string &&
-             (!('contentId' in data) || data.contentId is string) &&
-             data.title is string && data.title.size() < 100 &&
-             data.claimant is string && data.claimant.size() < 100 &&
-             data.status in ['Active', 'Disputed', 'Released'] &&
-             data.date is string;
-    }
-
-    match /claims/{claimId} {
-      allow read: if isStaff() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
-      allow create: if isStaff() && isValidClaim(request.resource.data);
-      allow update: if isStaff() && isValidClaim(request.resource.data);
+    match /email_templates/{templateId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    match /payments/{paymentId} {
-      allow read: if isStaff();
-      allow create: if true; // Allow public payment submissions
-      allow update, delete: if isAdmin();
-    }
-
-    match /logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
-    }
-
-    match /videoAnalytics/{analyticsId} {
-      allow read: if isStaff() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
-      allow write: if isAdmin() || (isAuthenticated() && request.resource.data.creatorId == request.auth.uid);
-    }
-
-    function isValidAsset(data) {
-      return data.title is string && data.title.size() < 200 &&
-             data.type in ['Audio', 'Video', 'Audiovisual'] &&
-             data.artist is string && data.artist.size() < 200 &&
-             data.policy in ['Monetize', 'Block', 'Track'] &&
-             data.status in ['Active', 'Inactive'] &&
-             data.ownerUid is string;
-    }
-
-    match /content_id_assets/{assetId} {
-      allow read: if isStaff() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
-      allow create: if isAuthenticated() && isValidAsset(request.resource.data);
-      allow update: if isStaff() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid && isValidAsset(request.resource.data));
-      allow delete: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
-    }
-    
-    match /test/connection {
-      allow read: if true;
+    match /platform_settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

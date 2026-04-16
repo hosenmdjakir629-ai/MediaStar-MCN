@@ -1,4 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { Dashboard } from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import CreatorDashboard from './pages/CreatorDashboard';
+import AdminCreatorManagement, { Creator } from './pages/AdminCreatorManagement';
+import CreatorApplication from './pages/CreatorApplication';
+import EducationHub from './pages/EducationHub';
+import LegalLicensing from './pages/LegalLicensing';
+import ContentScheduler from './pages/ContentScheduler';
+import Gamification from './pages/Gamification';
+import BackupExport from './pages/BackupExport';
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,10 +31,12 @@ import {
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
+  Database,
   Trash2,
   BarChart3,
   TrendingUp,
   Plus,
+  Trophy,
   X,
   LogIn,
   LogOut,
@@ -40,7 +52,13 @@ import {
   XCircle,
   Clock,
   Upload,
-  UserCheck
+  UserCheck,
+  UserPlus,
+  PlaySquare,
+  BookOpen,
+  ShoppingBag,
+  FileSignature,
+  Edit2
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -56,6 +74,7 @@ import {
   Bar
 } from 'recharts';
 import { generateVideoIdeas, optimizeTitle, suggestThumbnails } from './services/geminiService';
+import api from './lib/api';
 import { 
   auth, 
   db, 
@@ -65,15 +84,24 @@ import {
   sendEmailVerification,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
-} from './firebase';
+  updateProfile,
+  storage,
+  handleFirestoreError,
+  OperationType
+} from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, addDoc, serverTimestamp, collection, getDocs, updateDoc, onSnapshot, query, orderBy, where, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from './firebase';
 
-function App() {
+import { CurrencyProvider, useCurrency } from './contexts/CurrencyContext';
+import { RegionProvider, useRegion } from './contexts/RegionContext';
+import { RightsManagement } from './pages/RightsManagement';
+import { RightsTable } from './components/RightsTable';
+
+function AppContent() {
   const [user, setUser] = useState<User | null>(null);
+  const { currency, setCurrency, availableCurrencies } = useCurrency();
+  const { region, setRegion, availableRegions } = useRegion();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -124,10 +152,17 @@ function App() {
   const [isCreatingPayout, setIsCreatingPayout] = useState(false);
   
   // Invite form state
-  const [inviteForm, setInviteForm] = useState({ channelName: '', channelUrl: '', email: '', message: '' });
+  const [inviteForm, setInviteForm] = useState({ channelName: '', channelUrl: '', email: '', message: '', templateId: '', templateSubject: '', templateBody: '' });
   const [isInviting, setIsInviting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  // Email Templates state
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+  const [isEmailTemplatesLoading, setIsEmailTemplatesLoading] = useState(false);
+  const [showEmailTemplateModal, setShowEmailTemplateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [newTemplate, setNewTemplate] = useState({ name: '', subject: '', body: '', variables: ['channelName', 'message', 'inviteLink'] });
 
   const handleSyncChannel = async () => {
     if (!inviteForm.channelUrl) {
@@ -212,6 +247,7 @@ function App() {
 
   // Withdrawal State
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [showWithdrawalConfirm, setShowWithdrawalConfirm] = useState(false);
   const [withdrawalForm, setWithdrawalForm] = useState({ amount: '', method: 'Bank Transfer', details: '' });
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
@@ -224,17 +260,26 @@ function App() {
     
     setIsWithdrawing(true);
     try {
-      await addDoc(collection(db, 'payouts'), {
-        creatorId: user.uid,
-        creatorName: userProfile.name,
+      await api.post('/withdraw/request', {
         amount: amountNum,
         method: withdrawalForm.method,
-        details: withdrawalForm.details,
-        status: 'Pending',
-        createdAt: serverTimestamp()
+        details: withdrawalForm.details
       });
       setShowWithdrawalModal(false);
       setWithdrawalForm({ amount: '', method: 'Bank Transfer', details: '' });
+      
+      // Refresh payouts
+      const endpoint = isAdmin ? '/withdraw/all' : '/withdraw/my';
+      const res = await api.get(endpoint);
+      const data = res.data.map((item: any) => ({
+        id: item._id,
+        ...item,
+        createdAt: { toDate: () => new Date(item.date) },
+        timestamp: { toDate: () => new Date(item.date) },
+        creatorId: item.userId,
+        status: item.status.charAt(0).toUpperCase() + item.status.slice(1)
+      }));
+      setPayouts(data);
     } catch (error) {
       console.error("Withdrawal Error:", error);
     } finally {
@@ -244,6 +289,16 @@ function App() {
   const [kycForm, setKycForm] = useState({ idType: 'National ID', idNumber: '', idImage: '' });
   const [isKycSubmitting, setIsKycSubmitting] = useState(false);
   const [kycStatus, setKycStatus] = useState<any>(null);
+
+  // Platform Settings State
+  const [platformSettings, setPlatformSettings] = useState({
+    maintenanceMode: false,
+    enableContentId: true,
+    enablePayouts: true,
+    enableInvites: true,
+    enableApplications: true
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const handleKycSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -367,9 +422,15 @@ function App() {
   };
 
   useEffect(() => {
+    if (!auth) {
+      setIsAuthLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        const token = await currentUser.getIdToken();
+        localStorage.setItem('token', token);
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
           setUserProfile(userDoc.data());
@@ -393,6 +454,7 @@ function App() {
         }
       } else {
         setUserProfile(null);
+        localStorage.removeItem('token');
       }
       setIsAuthLoading(false);
     });
@@ -410,7 +472,7 @@ function App() {
         setAllUsers(usersList);
         setIsUsersLoading(false);
       }, (error) => {
-        console.error("Error fetching users:", error);
+        handleFirestoreError(error, OperationType.LIST, 'users');
         setIsUsersLoading(false);
       });
     }
@@ -427,6 +489,7 @@ function App() {
       }, (error) => {
         console.error("Error fetching claims:", error);
         setIsClaimsLoading(false);
+        // Add user-friendly error notification here if needed
       });
     }
 
@@ -547,23 +610,57 @@ function App() {
   }, [user, activeTab]);
 
   useEffect(() => {
-    if (user && activeTab === 'payouts') {
-      setIsPayoutsLoading(true);
-      const q = query(collection(db, 'payouts'), orderBy('timestamp', 'desc'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const payoutsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setPayouts(payoutsData);
-        setIsPayoutsLoading(false);
-      }, (error) => {
-        console.error("Error fetching payouts:", error);
-        setIsPayoutsLoading(false);
-      });
-      return () => unsubscribe();
+    if (user && activeTab === 'settings' && isAdmin) {
+      const fetchSettings = async () => {
+        try {
+          const docRef = doc(db, 'platform_settings', 'global');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setPlatformSettings(docSnap.data() as any);
+          } else {
+            // Create default settings if they don't exist
+            await setDoc(docRef, platformSettings);
+          }
+        } catch (error) {
+          console.error("Error fetching platform settings:", error);
+        }
+      };
+      fetchSettings();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (user && (activeTab === 'email-templates' || activeTab === 'invites') && isAdmin) {
+      setIsEmailTemplatesLoading(true);
+      getDocs(collection(db, 'email_templates'))
+        .then(snapshot => {
+          const templates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setEmailTemplates(templates as any);
+        })
+        .catch(err => console.error('Error fetching email templates:', err))
+        .finally(() => setIsEmailTemplatesLoading(false));
+    }
+
+    if (user && (activeTab === 'payouts' || activeTab === 'withdrawals')) {
+      setIsPayoutsLoading(true);
+      const endpoint = isAdmin ? '/withdraw/all' : '/withdraw/my';
+      api.get(endpoint)
+        .then(res => {
+          const data = res.data.map((item: any) => ({
+            id: item._id,
+            ...item,
+            // Map MongoDB fields to what the UI expects if necessary
+            createdAt: { toDate: () => new Date(item.date) },
+            timestamp: { toDate: () => new Date(item.date) },
+            creatorId: item.userId,
+            status: item.status.charAt(0).toUpperCase() + item.status.slice(1) // 'pending' -> 'Pending'
+          }));
+          setPayouts(data);
+        })
+        .catch(err => console.error("Error fetching payouts:", err))
+        .finally(() => setIsPayoutsLoading(false));
+    }
+  }, [user, activeTab, isAdmin]);
 
   const platformTools = [
     { id: 'video-distribution', title: 'Video Distribution', description: 'Distribute your videos across YouTube and Facebook', icon: Video, badge: null, color: 'text-red-500', bg: 'bg-red-50' },
@@ -581,7 +678,9 @@ function App() {
   const [contentIdAssets, setContentIdAssets] = useState<any[]>([]);
   const [isAssetsLoading, setIsAssetsLoading] = useState(false);
   const [showAddAssetModal, setShowAddAssetModal] = useState(false);
-  const [newAsset, setNewAsset] = useState({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '' });
+  const [assetToDelete, setAssetToDelete] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [newAsset, setNewAsset] = useState({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '', videoContentId: '' });
   const [assetValidationErrors, setAssetValidationErrors] = useState<{ [key: string]: string }>({});
   const [isCreatingAsset, setIsCreatingAsset] = useState(false);
 
@@ -593,6 +692,9 @@ function App() {
   useEffect(() => {
     if (!isStaff || claims.length === 0) return;
 
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     const unnotifiedClaims = claims.filter(c => c.notified === false);
     
     unnotifiedClaims.forEach(async (claim) => {
@@ -602,20 +704,22 @@ function App() {
       const name = creator?.name || 'Creator';
 
       try {
+        // Refresh token before sending
+        if (user) {
+          const freshToken = await user.getIdToken(true);
+          localStorage.setItem('token', freshToken);
+        }
+        
         console.log(`Automating notification for claim: ${claim.id}`);
-        const response = await fetch('/api/notify/copyright', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            name,
-            videoTitle: claim.title,
-            claimant: claim.claimant,
-            matchType: claim.matchType
-          })
+        const response = await api.post('/notify/copyright', {
+          email,
+          name,
+          videoTitle: claim.title,
+          claimant: claim.claimant,
+          matchType: claim.matchType
         });
 
-        if (response.ok) {
+        if (response.status === 200 || response.status === 201) {
           // Update claim as notified in Firestore
           await updateDoc(doc(db, 'claims', claim.id), {
             notified: true,
@@ -634,7 +738,7 @@ function App() {
         console.error("Failed to send automated notification:", error);
       }
     });
-  }, [claims, creators, isStaff]);
+  }, [claims, creators, isStaff, user]);
   
   const isDeadlineClose = (deadline: string | null) => {
     if (!deadline) return false;
@@ -651,18 +755,21 @@ function App() {
     setInviteStatus(null);
     
     try {
-      const response = await fetch('/api/invites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(inviteForm),
-      });
+      const payload = { ...inviteForm };
+      if (inviteForm.templateId) {
+        const template = emailTemplates.find(t => t.id === inviteForm.templateId);
+        if (template) {
+          payload.templateSubject = template.subject;
+          payload.templateBody = template.body;
+        }
+      }
+
+      const response = await api.post('/invites', payload);
       
-      if (!response.ok) throw new Error('Failed to send invite');
+      if (response.status !== 200 && response.status !== 201) throw new Error('Failed to send invite');
       
       setInviteStatus({ type: 'success', message: 'Invite sent successfully!' });
-      setInviteForm({ channelName: '', channelUrl: '', email: '', message: '' });
+      setInviteForm({ channelName: '', channelUrl: '', email: '', message: '', templateId: '', templateSubject: '', templateBody: '' });
     } catch (error) {
       setInviteStatus({ type: 'error', message: 'Failed to send invite. Please try again.' });
     } finally {
@@ -699,7 +806,7 @@ function App() {
         ownerUid: newAsset.ownerUid || user.uid
       });
       setShowAddAssetModal(false);
-      setNewAsset({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '' });
+      setNewAsset({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '', videoContentId: '' });
     } catch (error) {
       console.error("Error adding asset:", error);
       alert("Failed to add asset. Please try again.");
@@ -709,9 +816,16 @@ function App() {
   };
 
   const handleDeleteAsset = async (assetId: string) => {
-    if (!window.confirm("Are you sure you want to delete this asset? This action cannot be undone.")) return;
+    setAssetToDelete(assetId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteAsset = async () => {
+    if (!assetToDelete) return;
     try {
-      await deleteDoc(doc(db, 'content_id_assets', assetId));
+      await deleteDoc(doc(db, 'content_id_assets', assetToDelete));
+      setShowDeleteConfirm(false);
+      setAssetToDelete(null);
     } catch (error) {
       console.error("Error deleting asset:", error);
       alert("Failed to delete asset. Please try again.");
@@ -792,10 +906,19 @@ function App() {
 
   const handleUpdatePayoutStatus = async (payoutId: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, 'payouts', payoutId), {
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      });
+      await api.patch(`/withdraw/${payoutId}/status`, { status: newStatus });
+      // Refresh payouts
+      const endpoint = isAdmin ? '/withdraw/all' : '/withdraw/my';
+      const res = await api.get(endpoint);
+      const data = res.data.map((item: any) => ({
+        id: item._id,
+        ...item,
+        createdAt: { toDate: () => new Date(item.date) },
+        timestamp: { toDate: () => new Date(item.date) },
+        creatorId: item.userId,
+        status: item.status.charAt(0).toUpperCase() + item.status.slice(1)
+      }));
+      setPayouts(data);
     } catch (error) {
       console.error("Error updating payout status:", error);
     }
@@ -1010,8 +1133,25 @@ function App() {
         niche: editingCreator.niche || '',
         revenue: Number(editingCreator.revenue) || 0,
         adminNotes: editingCreator.adminNotes || '',
+        payoutMethod: editingCreator.payoutMethod || '',
+        payoutDetails: editingCreator.payoutDetails || '',
         updatedAt: serverTimestamp()
       });
+      
+      // Notify creator about payout update
+      try {
+        await api.post('/notify/payout', {
+          email: editingCreator.email,
+          name: editingCreator.name,
+          amount: 'N/A',
+          method: editingCreator.payoutMethod,
+          status: 'Updated',
+          reference: editingCreator.payoutDetails
+        });
+      } catch (notifyError) {
+        console.error("Error notifying creator:", notifyError);
+      }
+
       setEditingCreator(null);
       alert("Creator profile updated successfully!");
     } catch (error) {
@@ -1057,16 +1197,12 @@ function App() {
 
       // Send email notification
       try {
-        await fetch('/api/notify/application', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: reviewingApplication.name,
-            email: reviewingApplication.email,
-            channelName: reviewingApplication.channelName,
-            status: reviewingApplication.status,
-            adminNotes: reviewingApplication.adminNotes
-          })
+        await api.post('/notify/application', {
+          name: reviewingApplication.name,
+          email: reviewingApplication.email,
+          channelName: reviewingApplication.channelName,
+          status: reviewingApplication.status,
+          adminNotes: reviewingApplication.adminNotes
         });
       } catch (notifyError) {
         console.error("Failed to send notification:", notifyError);
@@ -1079,6 +1215,64 @@ function App() {
       alert("Failed to update application.");
     } finally {
       setIsUpdatingApplication(false);
+    }
+  };
+
+  const handleSavePlatformSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      await updateDoc(doc(db, 'platform_settings', 'global'), {
+        ...platformSettings,
+        updatedAt: serverTimestamp()
+      });
+      alert("Platform settings saved successfully.");
+    } catch (error) {
+      console.error("Error saving platform settings:", error);
+      alert("Failed to save platform settings.");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleSaveEmailTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplate.name || !newTemplate.subject || !newTemplate.body) {
+      alert("Name, Subject, and Body are required.");
+      return;
+    }
+    
+    try {
+      if (editingTemplate) {
+        await updateDoc(doc(db, 'email_templates', editingTemplate.id), {
+          ...newTemplate,
+          updatedAt: serverTimestamp()
+        });
+        setEmailTemplates(emailTemplates.map(t => t.id === editingTemplate.id ? { ...t, ...newTemplate } : t));
+      } else {
+        const docRef = await addDoc(collection(db, 'email_templates'), {
+          ...newTemplate,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        setEmailTemplates([...emailTemplates, { id: docRef.id, ...newTemplate }]);
+      }
+      setShowEmailTemplateModal(false);
+      setEditingTemplate(null);
+      setNewTemplate({ name: '', subject: '', body: '', variables: ['channelName', 'message', 'inviteLink'] });
+    } catch (error) {
+      console.error("Error saving email template:", error);
+      alert("Failed to save email template.");
+    }
+  };
+
+  const handleDeleteEmailTemplate = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this template?")) return;
+    try {
+      await deleteDoc(doc(db, 'email_templates', id));
+      setEmailTemplates(emailTemplates.filter(t => t.id !== id));
+    } catch (error) {
+      console.error("Error deleting email template:", error);
+      alert("Failed to delete email template.");
     }
   };
 
@@ -1100,17 +1294,13 @@ function App() {
       const creator = creators.find(c => c.id === newPayout.creatorId);
       if (creator && creator.email) {
         try {
-          await fetch('/api/notify/payout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: creator.email,
-              name: creator.name,
-              amount: newPayout.amount,
-              method: newPayout.method,
-              status: 'Pending',
-              reference: newPayout.reference
-            })
+          await api.post('/notify/payout', {
+            email: creator.email,
+            name: creator.name,
+            amount: newPayout.amount,
+            method: newPayout.method,
+            status: 'Pending',
+            reference: newPayout.reference
           });
         } catch (notifyError) {
           console.error("Failed to send notification:", notifyError);
@@ -1134,38 +1324,30 @@ function App() {
 
     setIsAddingEarning(true);
     try {
-      const response = await fetch('/api/earnings/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newEarning,
-          totalRevenue: Number(newEarning.totalRevenue),
-          creatorPercentage: Number(newEarning.creatorPercentage),
-          mcnPercentage: Number(newEarning.mcnPercentage),
-          bonusPercentage: Number(newEarning.bonusPercentage)
-        })
+      const response = await api.post('/earnings/add', {
+        ...newEarning,
+        totalRevenue: Number(newEarning.totalRevenue),
+        creatorPercentage: Number(newEarning.creatorPercentage),
+        mcnPercentage: Number(newEarning.mcnPercentage),
+        bonusPercentage: Number(newEarning.bonusPercentage)
       });
 
-      if (response.ok) {
-        setShowAddEarningModal(false);
-        setNewEarning({
-          creatorId: '',
-          channelId: '',
-          month: new Date().toISOString().slice(0, 7),
-          totalRevenue: '',
-          creatorPercentage: 70,
-          mcnPercentage: 20,
-          bonusPercentage: 10,
-          status: 'Accrued'
-        });
-        alert("Earning record added and split calculated successfully!");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to add earning");
-      }
+      setShowAddEarningModal(false);
+      setNewEarning({
+        creatorId: '',
+        channelId: '',
+        month: new Date().toISOString().slice(0, 7),
+        totalRevenue: '',
+        creatorPercentage: 70,
+        mcnPercentage: 20,
+        bonusPercentage: 10,
+        status: 'Accrued'
+      });
+      alert("Earning record added and split calculated successfully!");
     } catch (error: any) {
       console.error("Error adding earning:", error);
-      alert("Failed to add earning record: " + error.message);
+      const errorMsg = error.response?.data?.error || error.message || "Failed to add earning";
+      alert("Failed to add earning record: " + errorMsg);
     } finally {
       setIsAddingEarning(false);
     }
@@ -1178,18 +1360,14 @@ function App() {
     const creatorName = creator?.name || 'Creator';
     
     try {
-      const response = await fetch('/api/notify/copyright', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: creatorEmail,
-          name: creatorName,
-          videoTitle: claim.title,
-          claimant: claim.claimant,
-          matchType: claim.matchType
-        })
+      const response = await api.post('/notify/copyright', {
+        email: creatorEmail,
+        name: creatorName,
+        videoTitle: claim.title,
+        claimant: claim.claimant,
+        matchType: claim.matchType
       });
-      if (response.ok) {
+      if (response.status === 200 || response.status === 201) {
         // Update claim as notified in Firestore if it wasn't already
         if (!claim.notified) {
           await updateDoc(doc(db, 'claims', claim.id), {
@@ -1228,7 +1406,7 @@ function App() {
       status: 'Active',
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-      notes: 'Automatically detected by OrbitX Content ID Simulation.',
+      notes: 'Automatically detected by OrbitX Network LTD Content ID Simulation.',
       statusColor: 'bg-emerald-100 text-emerald-700',
       notified: false,
       creatorId: randomCreator.id,
@@ -1251,7 +1429,7 @@ function App() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-600 font-medium">Loading OrbitX Admin...</p>
+          <p className="text-slate-600 font-medium">Loading OrbitX Network LTD...</p>
         </div>
       </div>
     );
@@ -1264,9 +1442,9 @@ function App() {
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg mx-auto mb-6">
             O
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">OrbitX Admin</h1>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">OrbitX Network LTD</h1>
           <p className="text-slate-600 mb-8">
-            {authMode === 'login' ? 'Sign in to manage your MCN dashboard.' : 'Create an account to join OrbitX MCN.'}
+            {authMode === 'login' ? 'Sign in to manage your MCN dashboard.' : 'Create an account to join OrbitX Network LTD.'}
           </p>
 
           <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
@@ -1382,7 +1560,7 @@ function App() {
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
               O
             </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">OrbitX Admin</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">OrbitX Network LTD</h1>
           </div>
         <nav className="mt-6 flex flex-col gap-1 px-4 flex-1">
           <button 
@@ -1392,102 +1570,71 @@ function App() {
             <LayoutDashboard className="w-5 h-5 mr-3" />
             Dashboard
           </button>
-          {isStaff && (
-            <>
-              <button 
-                onClick={() => setActiveTab('creators')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'creators' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <Users className="w-5 h-5 mr-3" />
-                Creators
-              </button>
-              <button 
-                onClick={() => setActiveTab('channels')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'channels' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <Video className="w-5 h-5 mr-3" />
-                Channels
-              </button>
-              <button 
-                onClick={() => setActiveTab('applications')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'applications' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <FileText className="w-5 h-5 mr-3" />
-                Applications
-              </button>
-              <button 
-                onClick={() => setActiveTab('invites')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'invites' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <MailPlus className="w-5 h-5 mr-3" />
-                Channel Invites
-              </button>
-            </>
-          )}
           <button 
-            onClick={() => setActiveTab('tools')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'tools' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            onClick={() => setActiveTab('youtube-integration')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'youtube-integration' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
           >
-            <Wrench className="w-5 h-5 mr-3" />
-            Platform Tools
+            <Video className="w-5 h-5 mr-3" />
+            YouTube Integration
           </button>
           <button 
-            onClick={() => setActiveTab('copyright')}
-            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'copyright' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            onClick={() => setActiveTab('earnings')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'earnings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
           >
-            <Copyright className="w-5 h-5 mr-3" />
-            Copyright Tools
+            <DollarSign className="w-5 h-5 mr-3" />
+            Earnings
           </button>
-          {isAdmin && (
-            <>
-              <button 
-                onClick={() => setActiveTab('contentid')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'contentid' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <ShieldCheck className="w-5 h-5 mr-3" />
-                Content ID
-              </button>
-              <button 
-                onClick={() => setActiveTab('earnings')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'earnings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <DollarSign className="w-5 h-5 mr-3" />
-                Earnings
-              </button>
-              <button 
-                onClick={() => setActiveTab('payouts')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'payouts' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <LogIn className="w-5 h-5 mr-3 rotate-90" />
-                Payouts
-              </button>
-              <button 
-                onClick={() => setActiveTab('logs')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'logs' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <Activity className="w-5 h-5 mr-3" />
-                System Logs
-              </button>
-            </>
+          <button 
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'analytics' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <BarChart3 className="w-5 h-5 mr-3" />
+            Analytics
+          </button>
+          <button 
+            onClick={() => setActiveTab('brand-deals')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'brand-deals' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <Megaphone className="w-5 h-5 mr-3" />
+            Brand Deals
+          </button>
+          <button 
+            onClick={() => setActiveTab('rights-management')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'rights-management' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <FileSignature className="w-5 h-5 mr-3" />
+            Rights Management
+          </button>
+          {platformSettings.enableContentId && (
+            <button 
+              onClick={() => setActiveTab('copyright')}
+              className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'copyright' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <Copyright className="w-5 h-5 mr-3" />
+              Copyright
+            </button>
           )}
-          {isCreator && (
-            <>
-              <button 
-                onClick={() => setActiveTab('videos')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'videos' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <Video className="w-5 h-5 mr-3" />
-                My Videos
-              </button>
-              <button 
-                onClick={() => setActiveTab('withdrawals')}
-                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'withdrawals' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-              >
-                <DollarSign className="w-5 h-5 mr-3" />
-                Withdrawals
-              </button>
-            </>
-          )}
+          <button 
+            onClick={() => setActiveTab('team')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'team' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <Users className="w-5 h-5 mr-3" />
+            Team
+          </button>
+          <button 
+            onClick={() => setActiveTab('education')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'education' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <BookOpen className="w-5 h-5 mr-3" />
+            Education Hub
+          </button>
+          <button 
+            onClick={() => setActiveTab('marketplace')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'marketplace' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <ShoppingBag className="w-5 h-5 mr-3" />
+            Marketplace
+          </button>
           <button 
             onClick={() => setActiveTab('settings')}
             className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'settings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
@@ -1495,6 +1642,58 @@ function App() {
             <Settings className="w-5 h-5 mr-3" />
             Settings
           </button>
+
+          {isStaff && (
+            <div className="mt-6 pt-6 border-t border-slate-100">
+              <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Staff Admin</p>
+              <button 
+                onClick={() => setActiveTab('creators')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'creators' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Creators
+              </button>
+              {platformSettings.enableApplications && (
+                <button 
+                  onClick={() => setActiveTab('applications')}
+                  className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'applications' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                >
+                  <FileText className="w-5 h-5 mr-3" />
+                  Applications
+                  {applications.filter(a => a.status === 'Pending').length > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {applications.filter(a => a.status === 'Pending').length}
+                    </span>
+                  )}
+                </button>
+              )}
+              {platformSettings.enableInvites && (
+                <button 
+                  onClick={() => setActiveTab('invites')}
+                  className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'invites' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                >
+                  <UserPlus className="w-5 h-5 mr-3" />
+                  Invites
+                </button>
+              )}
+              {platformSettings.enablePayouts && (
+                <button 
+                  onClick={() => setActiveTab('payouts')}
+                  className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'payouts' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                >
+                  <DollarSign className="w-5 h-5 mr-3" />
+                  Payouts
+                </button>
+              )}
+              <button 
+                onClick={() => setActiveTab('email-templates')}
+                className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'email-templates' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <Mail className="w-5 h-5 mr-3" />
+                Email Templates
+              </button>
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-100">
@@ -1544,6 +1743,52 @@ function App() {
             </form>
           </div>
           <div className="flex items-center gap-5">
+            {isStaff && (
+              <div className="flex items-center gap-2 mr-4">
+                <button 
+                  onClick={() => setShowAddEarningModal(true)}
+                  className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Earning Report
+                </button>
+                <button 
+                  onClick={() => setShowCreatePayoutModal(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-md"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  Create Payout
+                </button>
+              </div>
+            )}
+            {/* Region Selector */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+              <span className="text-lg">{region.flag}</span>
+              <select 
+                value={region.code} 
+                onChange={(e) => setRegion(e.target.value)}
+                className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                {availableRegions.map(r => (
+                  <option key={r.code} value={r.code}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Currency Selector */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+              <span className="text-sm font-bold text-indigo-600">{currency.symbol}</span>
+              <select 
+                value={currency.code} 
+                onChange={(e) => setCurrency(e.target.value)}
+                className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                {availableCurrencies.map(c => (
+                  <option key={c.code} value={c.code}>{c.code}</option>
+                ))}
+              </select>
+            </div>
+
             <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
@@ -1586,27 +1831,243 @@ function App() {
             </div>
           ) : (
             <>
+              {activeTab === 'application' && (
+                <CreatorApplication user={user} />
+              )}
+              {activeTab === 'admin-dashboard' && (
+                <AdminDashboard />
+              )}
+              {activeTab === 'creator-dashboard' && (
+                <CreatorDashboard user={user} />
+              )}
+              {activeTab === 'youtube-integration' && (
+                <div className="space-y-8">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">YouTube Integration</h3>
+                    <p className="text-slate-500">Manage your YouTube channel connection and sync data.</p>
+                  </div>
+                  {youtubeStats && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                      <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                            <img src={youtubeStats.thumbnails?.default?.url} alt={youtubeStats.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-slate-900 tracking-tight">{youtubeStats.title}</h3>
+                            <p className="text-xs text-slate-500 font-medium">Primary Network Channel</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                        <div className="p-6">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Subscribers</p>
+                          <p className="text-2xl font-bold text-slate-900">{parseInt(youtubeStats.statistics?.subscriberCount).toLocaleString()}</p>
+                        </div>
+                        <div className="p-6">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Views</p>
+                          <p className="text-2xl font-bold text-slate-900">{parseInt(youtubeStats.statistics?.viewCount).toLocaleString()}</p>
+                        </div>
+                        <div className="p-6">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Videos</p>
+                          <p className="text-2xl font-bold text-slate-900">{parseInt(youtubeStats.statistics?.videoCount).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {latestVideos.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {latestVideos.map((video: any) => (
+                        <div key={video.id.videoId || video.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all group">
+                          <div className="aspect-video relative overflow-hidden">
+                            <img src={video.snippet.thumbnails.high?.url} alt={video.snippet.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-4">
+                            <h4 className="text-sm font-bold text-slate-900 line-clamp-2">{video.snippet.title}</h4>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {activeTab === 'analytics' && (
+                <div className="space-y-8">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Network Analytics</h3>
+                    <p className="text-slate-500">Detailed performance metrics across all channels and regions.</p>
+                  </div>
+                  {/* Removed RegionAnalytics */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                      <h3 className="text-lg font-bold text-slate-900 mb-6">Revenue Growth</h3>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={[
+                            { name: 'Jan', revenue: 4000 },
+                            { name: 'Feb', revenue: 3000 },
+                            { name: 'Mar', revenue: 2000 },
+                            { name: 'Apr', revenue: 2780 },
+                            { name: 'May', revenue: 1890 },
+                            { name: 'Jun', revenue: 2390 },
+                            { name: 'Jul', revenue: 3490 },
+                          ]}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="revenue" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                      <h3 className="text-lg font-bold text-slate-900 mb-6">Top Niches</h3>
+                      <div className="space-y-6">
+                        {[
+                          { name: 'Gaming', percentage: 45, color: 'bg-indigo-500' },
+                          { name: 'Vlogs', percentage: 25, color: 'bg-emerald-500' },
+                          { name: 'Tech', percentage: 15, color: 'bg-amber-500' },
+                          { name: 'Music', percentage: 10, color: 'bg-rose-500' },
+                        ].map((niche) => (
+                          <div key={niche.name}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-slate-700">{niche.name}</span>
+                              <span className="text-xs font-bold text-slate-500">{niche.percentage}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${niche.color}`} style={{ width: `${niche.percentage}%` }}></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'brand-deals' && (
+                <div className="p-8 bg-white rounded-2xl shadow-sm border border-slate-200 text-center">
+                  <h2 className="text-xl font-bold text-slate-900">Brand Deals</h2>
+                  <p className="text-slate-500">Coming soon.</p>
+                </div>
+              )}
+              {activeTab === 'team' && (
+                <div className="space-y-8">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Team Management</h3>
+                    <p className="text-slate-500">Manage staff members and their roles within the MCN.</p>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                          <th className="px-6 py-4 font-semibold">Name</th>
+                          <th className="px-6 py-4 font-semibold">Email</th>
+                          <th className="px-6 py-4 font-semibold">Role</th>
+                          <th className="px-6 py-4 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {allUsers.filter(u => u.role === 'admin' || u.role === 'editor').map((staff) => (
+                          <tr key={staff.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-bold text-slate-900">{staff.name || 'N/A'}</td>
+                            <td className="px-6 py-4 text-sm text-slate-500">{staff.email}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${staff.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'}`}>
+                                {staff.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="flex items-center text-xs text-emerald-600 font-medium">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2"></span>
+                                Active
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {/* Marketplace removed */}
+              {activeTab === 'education' && (
+                <EducationHub />
+              )}
+              {activeTab === 'settings' && (
+                <div className="max-w-4xl mx-auto space-y-8">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Settings</h3>
+                    <p className="text-slate-500">Manage your account preferences and system configuration.</p>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-8">
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-slate-400">
+                          <Bell className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">Email Notifications</p>
+                          <p className="text-xs text-slate-500">Receive updates about your channel and earnings.</p>
+                        </div>
+                      </div>
+                      <div className="w-12 h-6 bg-indigo-600 rounded-full relative cursor-pointer">
+                        <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-slate-400">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">Two-Factor Authentication</p>
+                          <p className="text-xs text-slate-500">Add an extra layer of security to your account.</p>
+                        </div>
+                      </div>
+                      <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all">
+                        Enable
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'scheduler' && (
+                <ContentScheduler />
+              )}
+              {activeTab === 'gamification' && (
+                <Gamification />
+              )}
+              {activeTab === 'backup' && (
+                <BackupExport />
+              )}
+              {activeTab === 'rights-management' && (
+                <div className="space-y-6">
+                  <RightsManagement />
+                  <RightsTable rights={[]} />
+                </div>
+              )}
               {activeTab === 'dashboard' && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Stat Cards */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200">
                   <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Creators</h3>
-                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">{stats?.totalCreators || '...'}</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">138+</p>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200">
                   <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Active Applications</h3>
-                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">{stats?.activeApplications || '...'}</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">138+</p>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200">
                   <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Revenue</h3>
-                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">${stats?.totalRevenue?.toLocaleString() || '...'}</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">100K+</p>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200">
                   <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">System Status</h3>
                   <div className="flex items-center mt-2">
                     <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full mr-2.5 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
-                    <p className="text-3xl font-bold text-slate-900 tracking-tight">{stats?.systemStatus || '...'}</p>
+                    <p className="text-3xl font-bold text-slate-900 tracking-tight">Active</p>
                   </div>
                 </div>
               </div>
@@ -1700,21 +2161,30 @@ function App() {
               </div>
 
               {youtubeError && (
-                <div className="mt-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                <div className="mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
                     <AlertTriangle className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-red-900">YouTube API Error (403 Forbidden)</h3>
-                    <p className="text-xs text-red-700 mt-1 leading-relaxed">
-                      {youtubeError}. This usually means your API key is invalid, the YouTube Data API is not enabled in your Google Cloud Console, or there are IP/Referrer restrictions on the key.
+                    <h3 className="text-sm font-bold text-amber-900">YouTube Data API Not Enabled</h3>
+                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                      We couldn't connect to the YouTube Data API. This usually happens when the API is not enabled in your Google Cloud project.
                     </p>
-                    <div className="mt-3 flex gap-3">
+                    <p className="text-xs text-amber-700 mt-2 leading-relaxed font-semibold">
+                      To fix this:
+                    </p>
+                    <ol className="text-xs text-amber-700 mt-1 list-decimal list-inside leading-relaxed">
+                      <li>Go to the <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer" className="underline font-bold">Google Cloud Console</a>.</li>
+                      <li>Ensure your project is selected.</li>
+                      <li>Click "Enable" to activate the YouTube Data API v3.</li>
+                      <li>Wait a few minutes and refresh this page.</li>
+                    </ol>
+                    <div className="mt-4 flex gap-3">
                       <a 
                         href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase tracking-wider underline"
+                        className="text-[10px] font-bold text-amber-700 hover:text-amber-800 uppercase tracking-wider underline"
                       >
                         Enable API
                       </a>
@@ -1722,7 +2192,7 @@ function App() {
                         href="https://console.cloud.google.com/apis/credentials" 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase tracking-wider underline"
+                        className="text-[10px] font-bold text-amber-700 hover:text-amber-800 uppercase tracking-wider underline"
                       >
                         Check Credentials
                       </a>
@@ -2080,7 +2550,7 @@ function App() {
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
                   <h3 className="text-xl font-semibold text-slate-900 tracking-tight">Send Channel Invite</h3>
-                  <p className="text-slate-500 text-sm mt-1">Invite a new creator to join the OrbitX MCN network.</p>
+                  <p className="text-slate-500 text-sm mt-1">Invite a new creator to join the OrbitX Network LTD.</p>
                 </div>
                 
                 <div className="p-8">
@@ -2154,6 +2624,23 @@ function App() {
                       </div>
                     </div>
                     
+                    <div>
+                      <label htmlFor="templateId" className="block text-sm font-medium text-slate-700 mb-2">
+                        Email Template
+                      </label>
+                      <select
+                        id="templateId"
+                        value={inviteForm.templateId}
+                        onChange={(e) => setInviteForm({...inviteForm, templateId: e.target.value})}
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none bg-white"
+                      >
+                        <option value="">Default Template</option>
+                        {emailTemplates.map(template => (
+                          <option key={template.id} value={template.id}>{template.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div>
                       <label htmlFor="message" className="block text-sm font-medium text-slate-700 mb-2">
                         Custom Message (Optional)
@@ -2544,6 +3031,7 @@ function App() {
                         <th className="px-6 py-4 font-semibold">Type</th>
                         <th className="px-6 py-4 font-semibold">Artist / Owner</th>
                         <th className="px-6 py-4 font-semibold">ISRC</th>
+                        <th className="px-6 py-4 font-semibold">Video Content ID</th>
                         <th className="px-6 py-4 font-semibold">Policy</th>
                         <th className="px-6 py-4 font-semibold">Status</th>
                         <th className="px-6 py-4 font-semibold">Last Updated</th>
@@ -2554,7 +3042,7 @@ function App() {
                     <tbody className="divide-y divide-slate-100">
                       {isAssetsLoading ? (
                         <tr>
-                          <td colSpan={10} className="px-6 py-12 text-center">
+                          <td colSpan={11} className="px-6 py-12 text-center">
                             <div className="flex flex-col items-center gap-3">
                               <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                               <p className="text-sm text-slate-500">Loading assets...</p>
@@ -2563,7 +3051,7 @@ function App() {
                         </tr>
                       ) : contentIdAssets.length === 0 ? (
                         <tr>
-                          <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
+                          <td colSpan={11} className="px-6 py-12 text-center text-slate-500">
                             No assets found in your library.
                           </td>
                         </tr>
@@ -2584,6 +3072,9 @@ function App() {
                             <td className="px-6 py-4 text-sm text-slate-700">{asset.artist}</td>
                             <td className="px-6 py-4 text-xs text-slate-500 font-mono">
                               {asset.isrc || '—'}
+                            </td>
+                            <td className="px-6 py-4 text-xs text-slate-500 font-mono">
+                              {asset.videoContentId || '—'}
                             </td>
                             <td className="px-6 py-4">
                               <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${asset.policy === 'Monetize' ? 'bg-emerald-50 text-emerald-600' : asset.policy === 'Block' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-600'}`}>
@@ -3210,12 +3701,199 @@ function App() {
             </div>
           )}
 
+          {activeTab === 'email-templates' && isAdmin && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Email Templates</h3>
+                  <p className="text-slate-500 text-sm mt-1">Manage templates for invites and notifications.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setEditingTemplate(null);
+                    setNewTemplate({ name: '', subject: '', body: '', variables: ['channelName', 'message', 'inviteLink'] });
+                    setShowEmailTemplateModal(true);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Template
+                </button>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/50 border-b border-slate-100 text-sm text-slate-500">
+                        <th className="px-6 py-4 font-semibold">Template Name</th>
+                        <th className="px-6 py-4 font-semibold">Subject</th>
+                        <th className="px-6 py-4 font-semibold">Variables</th>
+                        <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {isEmailTemplatesLoading ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                              <p className="text-sm text-slate-500">Loading templates...</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : emailTemplates.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                            No email templates found.
+                          </td>
+                        </tr>
+                      ) : (
+                        emailTemplates.map((template) => (
+                          <tr key={template.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-semibold text-slate-900">{template.name}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">{template.subject}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {template.variables?.map((v: string) => (
+                                  <span key={v} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-mono">
+                                    {v}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end gap-3">
+                                <button 
+                                  onClick={() => {
+                                    setEditingTemplate(template);
+                                    setNewTemplate({
+                                      name: template.name,
+                                      subject: template.subject,
+                                      body: template.body,
+                                      variables: template.variables || ['channelName', 'message', 'inviteLink']
+                                    });
+                                    setShowEmailTemplateModal(true);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                  title="Edit Template"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteEmailTemplate(template.id)}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Template"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-semibold text-slate-800 tracking-tight">Settings & Administration</h3>
                 <p className="text-slate-500 text-sm mt-1">Manage system preferences and user permissions.</p>
               </div>
+
+              {/* Platform Settings Section (Admin Only) */}
+              {isAdmin && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-5 h-5 text-indigo-600" />
+                      <h4 className="font-bold text-slate-900">Platform Features</h4>
+                    </div>
+                    <button
+                      onClick={handleSavePlatformSettings}
+                      disabled={isSavingSettings}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    >
+                      {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Maintenance Mode</p>
+                        <p className="text-xs text-slate-500">Disable access for all non-admin users.</p>
+                      </div>
+                      <div 
+                        onClick={() => setPlatformSettings({...platformSettings, maintenanceMode: !platformSettings.maintenanceMode})}
+                        className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${platformSettings.maintenanceMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${platformSettings.maintenanceMode ? 'right-1' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Content ID System</p>
+                        <p className="text-xs text-slate-500">Enable or disable the Content ID management features.</p>
+                      </div>
+                      <div 
+                        onClick={() => setPlatformSettings({...platformSettings, enableContentId: !platformSettings.enableContentId})}
+                        className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${platformSettings.enableContentId ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${platformSettings.enableContentId ? 'right-1' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Payout System</p>
+                        <p className="text-xs text-slate-500">Allow creators to request withdrawals.</p>
+                      </div>
+                      <div 
+                        onClick={() => setPlatformSettings({...platformSettings, enablePayouts: !platformSettings.enablePayouts})}
+                        className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${platformSettings.enablePayouts ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${platformSettings.enablePayouts ? 'right-1' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Creator Invitations</p>
+                        <p className="text-xs text-slate-500">Enable sending invites to new creators.</p>
+                      </div>
+                      <div 
+                        onClick={() => setPlatformSettings({...platformSettings, enableInvites: !platformSettings.enableInvites})}
+                        className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${platformSettings.enableInvites ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${platformSettings.enableInvites ? 'right-1' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Creator Applications</p>
+                        <p className="text-xs text-slate-500">Allow new creators to submit applications.</p>
+                      </div>
+                      <div 
+                        onClick={() => setPlatformSettings({...platformSettings, enableApplications: !platformSettings.enableApplications})}
+                        className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${platformSettings.enableApplications ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${platformSettings.enableApplications ? 'right-1' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* KYC Verification Section */}
               {isCreator && (
@@ -3379,55 +4057,104 @@ function App() {
               )}
 
               {isCreator && creatorProfile && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
-                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-indigo-600" />
-                    <h4 className="font-bold text-slate-900">Payout Settings</h4>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Payout Method</label>
-                      <select 
-                        value={creatorProfile.payoutOption || 'Bank Transfer'}
-                        onChange={(e) => setCreatorProfile({...creatorProfile, payoutOption: e.target.value})}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                <>
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                      <PlaySquare className="w-5 h-5 text-red-600" />
+                      <h4 className="font-bold text-slate-900">YouTube Channel Link</h4>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Channel URL</label>
+                        <input 
+                          type="text"
+                          value={creatorProfile.youtubeChannelUrl || ''}
+                          onChange={(e) => setCreatorProfile({...creatorProfile, youtubeChannelUrl: e.target.value})}
+                          placeholder="https://youtube.com/@yourchannel"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Channel Name</label>
+                        <input 
+                          type="text"
+                          value={creatorProfile.channelName || ''}
+                          onChange={(e) => setCreatorProfile({...creatorProfile, channelName: e.target.value})}
+                          placeholder="Your Channel Name"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const creatorRef = doc(db, 'creators', creatorProfile.id);
+                            await updateDoc(creatorRef, {
+                              youtubeChannelUrl: creatorProfile.youtubeChannelUrl || '',
+                              channelName: creatorProfile.channelName || ''
+                            });
+                            alert("YouTube channel linked successfully!");
+                          } catch (error) {
+                            console.error("Error linking YouTube channel:", error);
+                            alert("Failed to link YouTube channel.");
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                       >
-                        <option value="Bank Transfer">Bank Transfer</option>
-                        <option value="PayPal">PayPal</option>
-                        <option value="Bkash">Bkash</option>
-                        <option value="Nagad">Nagad</option>
-                      </select>
+                        Save Channel Link
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Payout Details</label>
-                      <input 
-                        type="text"
-                        value={creatorProfile.payoutDetails || ''}
-                        onChange={(e) => setCreatorProfile({...creatorProfile, payoutDetails: e.target.value})}
-                        placeholder="Enter account number or email"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-                    <button 
-                      onClick={async () => {
-                        try {
-                          const creatorRef = doc(db, 'creators', creatorProfile.id);
-                          await updateDoc(creatorRef, {
-                            payoutOption: creatorProfile.payoutOption || 'Bank Transfer',
-                            payoutDetails: creatorProfile.payoutDetails || ''
-                          });
-                          alert("Payout settings updated successfully!");
-                        } catch (error) {
-                          console.error("Error updating payout settings:", error);
-                          alert("Failed to update payout settings.");
-                        }
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Save Payout Settings
-                    </button>
                   </div>
-                </div>
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-indigo-600" />
+                      <h4 className="font-bold text-slate-900">Payout Settings</h4>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Payout Method</label>
+                        <select 
+                          value={creatorProfile.payoutOption || 'Bank Transfer'}
+                          onChange={(e) => setCreatorProfile({...creatorProfile, payoutOption: e.target.value})}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="Bank Transfer">Bank Transfer</option>
+                          <option value="PayPal">PayPal</option>
+                          <option value="Bkash">Bkash</option>
+                          <option value="Nagad">Nagad</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Payout Details</label>
+                        <input 
+                          type="text"
+                          value={creatorProfile.payoutDetails || ''}
+                          onChange={(e) => setCreatorProfile({...creatorProfile, payoutDetails: e.target.value})}
+                          placeholder="Enter account number or email"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const creatorRef = doc(db, 'creators', creatorProfile.id);
+                            await updateDoc(creatorRef, {
+                              payoutOption: creatorProfile.payoutOption || 'Bank Transfer',
+                              payoutDetails: creatorProfile.payoutDetails || ''
+                            });
+                            alert("Payout settings updated successfully!");
+                          } catch (error) {
+                            console.error("Error updating payout settings:", error);
+                            alert("Failed to update payout settings.");
+                          }
+                        }}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        Save Payout Settings
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -3937,6 +4664,34 @@ function App() {
       )}
 
       {/* Withdrawal Modal */}
+      {showWithdrawalConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 p-8 space-y-6">
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Confirm Withdrawal</h3>
+            <p className="text-sm text-slate-600">
+              Are you sure you want to request a withdrawal of <strong>${withdrawalForm.amount}</strong> via <strong>{withdrawalForm.method}</strong>?
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => { setShowWithdrawalConfirm(false); setShowWithdrawalModal(true); }}
+                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async (e) => {
+                  setShowWithdrawalConfirm(false);
+                  await handleWithdrawalSubmit(e as any);
+                }}
+                className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showWithdrawalModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -3946,7 +4701,7 @@ function App() {
                 <XCircle className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleWithdrawalSubmit} className="p-8 space-y-6">
+            <form onSubmit={(e) => { e.preventDefault(); setShowWithdrawalModal(false); setShowWithdrawalConfirm(true); }} className="p-8 space-y-6">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount ($)</label>
                 <input 
@@ -4006,6 +4761,75 @@ function App() {
           </div>
         </div>
       )}
+
+      {showEmailTemplateModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden border border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-semibold text-slate-900 tracking-tight">{editingTemplate ? 'Edit Template' : 'Create Template'}</h3>
+              <button onClick={() => setShowEmailTemplateModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEmailTemplate} className="p-6">
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Template Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newTemplate.name}
+                    onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                    placeholder="e.g., Standard Invite"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email Subject</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newTemplate.subject}
+                    onChange={(e) => setNewTemplate({...newTemplate, subject: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    placeholder="e.g., Exclusive Invitation to Join OrbitX MCN - {{channelName}}"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Available variables: {'{{channelName}}'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email Body (HTML)</label>
+                  <textarea 
+                    required
+                    rows={10}
+                    value={newTemplate.body}
+                    onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm"
+                    placeholder="<p>Hello {{channelName}},</p>..."
+                  ></textarea>
+                  <p className="text-xs text-slate-500 mt-1">Available variables: {'{{channelName}}'}, {'{{message}}'}, {'{{inviteLink}}'}</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button 
+                  type="button"
+                  onClick={() => setShowEmailTemplateModal(false)}
+                  className="flex-1 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                >
+                  {editingTemplate ? 'Save Changes' : 'Create Template'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showCreatePayoutModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
@@ -4253,6 +5077,35 @@ function App() {
                   {!isAdmin && <p className="text-[10px] text-slate-400 mt-1">Only administrators can edit financial data.</p>}
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payout Method</label>
+                  <select 
+                    disabled={!isAdmin}
+                    className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`}
+                    value={editingCreator.payoutMethod || ''}
+                    onChange={e => setEditingCreator({...editingCreator, payoutMethod: e.target.value})}
+                  >
+                    <option value="">Select Method</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="bKash">bKash</option>
+                    <option value="Payoneer">Payoneer</option>
+                    <option value="PayPal">PayPal</option>
+                    <option value="Crypto (USDT)">Crypto (USDT)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payout Details</label>
+                  <input 
+                    type="text"
+                    disabled={!isAdmin}
+                    className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`}
+                    placeholder="Account number, wallet address, etc."
+                    value={editingCreator.payoutDetails || ''}
+                    onChange={e => setEditingCreator({...editingCreator, payoutDetails: e.target.value})}
+                  />
+                </div>
+              </div>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Administrative Notes</label>
                 <textarea 
@@ -4456,6 +5309,32 @@ function App() {
           </div>
         </div>
       )}
+      {/* Delete Asset Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 p-8 space-y-6">
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Delete Asset</h3>
+            <p className="text-sm text-slate-600">
+              Are you sure you want to delete this asset? This action cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => { setShowDeleteConfirm(false); setAssetToDelete(null); }}
+                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteAsset}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Asset Modal */}
       {showAddAssetModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
@@ -4571,6 +5450,16 @@ function App() {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Video Content ID (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={newAsset.videoContentId}
+                    onChange={(e) => setNewAsset({...newAsset, videoContentId: e.target.value})}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                    placeholder="e.g. vid_12345"
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button 
@@ -4602,4 +5491,12 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <CurrencyProvider>
+      <RegionProvider>
+        <AppContent />
+      </RegionProvider>
+    </CurrencyProvider>
+  );
+}

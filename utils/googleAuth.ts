@@ -9,6 +9,7 @@ const oauth2Client = new google.auth.OAuth2(
 export const getAuthUrl = () => {
   const scopes = [
     'https://www.googleapis.com/auth/youtube.readonly',
+    'https://www.googleapis.com/auth/youtube.upload',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
   ];
@@ -32,6 +33,30 @@ export const getYoutubeData = async (tokens: any) => {
   const response = await youtube.channels.list({
     part: ['snippet', 'statistics'],
     mine: true,
+  });
+
+  return response.data;
+};
+
+export const uploadVideo = async (tokens: any, videoData: { title: string, description: string, tags?: string[] }, videoStream: any) => {
+  oauth2Client.setCredentials(tokens);
+  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+  const response = await youtube.videos.insert({
+    part: ['snippet', 'status'],
+    requestBody: {
+      snippet: {
+        title: videoData.title,
+        description: videoData.description,
+        tags: videoData.tags,
+      },
+      status: {
+        privacyStatus: 'public', // Default to public
+      },
+    },
+    media: {
+      body: videoStream,
+    },
   });
 
   return response.data;

@@ -35,3 +35,33 @@ export const linkChannel = async (req: any, res: Response) => {
     res.status(500).json({ error: 'Failed to link channel' });
   }
 };
+
+export const syncChannel = async (req: any, res: Response) => {
+  try {
+    const { channelId } = req.body;
+    const userId = req.user.id;
+
+    // In a real app, you'd fetch data from YouTube API here
+    // For now, we'll simulate a sync by updating with random growth
+    const channel = await Channel.findOne({ channelId, userId });
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    // Simulate growth
+    channel.views += Math.floor(Math.random() * 1000);
+    channel.subscribers += Math.floor(Math.random() * 10);
+    channel.revenue += Math.random() * 50;
+    
+    await channel.save();
+
+    res.json({
+      views: channel.views,
+      subscribers: channel.subscribers,
+      videos: 42, // Mocked video count
+      revenue: channel.revenue
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to sync channel' });
+  }
+};

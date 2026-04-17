@@ -82,6 +82,7 @@ import {
   signInWithPopup, 
   signOut, 
   sendEmailVerification,
+  sendPasswordResetEmail,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
@@ -374,11 +375,13 @@ function AppContent() {
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, actionType: 'release' | 'reinstate' | null}>({isOpen: false, actionType: null});
 
   // Email/Password Auth State
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
 
   // Role Helpers
@@ -852,6 +855,7 @@ function AppContent() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setAuthSuccess(null);
     setIsProcessingAuth(true);
 
     try {
@@ -873,8 +877,11 @@ function AppContent() {
         
         await sendEmailVerification(userCredential.user);
         alert("Account created! A verification email has been sent to your inbox.");
-      } else {
+      } else if (authMode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
+      } else if (authMode === 'forgot') {
+        await sendPasswordResetEmail(auth, email);
+        setAuthSuccess("Password reset email sent! Check your inbox.");
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -1444,7 +1451,9 @@ function AppContent() {
           </div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">OrbitX Network LTD</h1>
           <p className="text-slate-600 mb-8">
-            {authMode === 'login' ? 'Sign in to manage your MCN dashboard.' : 'Create an account to join OrbitX Network LTD.'}
+            {authMode === 'login' ? 'Sign in to manage your MCN dashboard.' : 
+             authMode === 'signup' ? 'Create an account to join OrbitX Network LTD.' :
+             'Enter your email to reset your password.'}
           </p>
 
           <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
@@ -1470,20 +1479,39 @@ function AppContent() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div>
-              <input 
-                type="password" 
-                placeholder="Password" 
-                required 
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            {authMode !== 'forgot' && (
+              <div>
+                <input 
+                  type="password" 
+                  placeholder="Password" 
+                  required 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                {authMode === 'login' && (
+                  <div className="text-right mt-1">
+                    <button 
+                      type="button"
+                      onClick={() => setAuthMode('forgot')}
+                      className="text-xs text-indigo-600 font-semibold hover:underline"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             
             {authError && (
               <p className="text-xs text-red-600 font-medium bg-red-50 p-2 rounded-lg border border-red-100">
                 {authError}
+              </p>
+            )}
+
+            {authSuccess && (
+              <p className="text-xs text-emerald-600 font-medium bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                {authSuccess}
               </p>
             )}
 
@@ -1493,8 +1521,20 @@ function AppContent() {
               className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {isProcessingAuth && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-              {authMode === 'login' ? 'Sign In' : 'Create Account'}
+              {authMode === 'login' ? 'Sign In' : 
+               authMode === 'signup' ? 'Create Account' : 
+               'Send Reset Link'}
             </button>
+            
+            {authMode === 'forgot' && (
+              <button 
+                type="button"
+                onClick={() => setAuthMode('login')}
+                className="w-full text-slate-600 text-sm font-semibold hover:text-slate-900 transition-colors"
+              >
+                Back to Login
+              </button>
+            )}
           </form>
 
           <div className="relative mb-6">

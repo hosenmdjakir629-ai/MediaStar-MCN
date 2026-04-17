@@ -5,6 +5,7 @@ import {
   signInWithPopup, 
   signOut, 
   sendEmailVerification,
+  sendPasswordResetEmail,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile
@@ -23,6 +24,7 @@ export {
   signInWithPopup, 
   signOut, 
   sendEmailVerification,
+  sendPasswordResetEmail,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile

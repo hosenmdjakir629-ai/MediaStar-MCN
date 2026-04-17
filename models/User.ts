@@ -10,6 +10,8 @@ export interface IUser extends Document {
   createdAt: Date;
   emailVerified: boolean;
   verificationToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   kycStatus: 'pending' | 'verified' | 'rejected' | 'none';
   kycData?: {
     idType: string;
@@ -29,6 +31,8 @@ const userSchema = new Schema<IUser>({
   createdAt: { type: Date, default: Date.now },
   emailVerified: { type: Boolean, default: false },
   verificationToken: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
   kycStatus: { type: String, enum: ['pending', 'verified', 'rejected', 'none'], default: 'none' },
   kycData: {
     idType: String,

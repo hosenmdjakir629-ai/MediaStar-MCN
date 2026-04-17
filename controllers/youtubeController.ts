@@ -177,7 +177,18 @@ export const getVideos = async (req: Request, res: Response) => {
     }
 
     const data = await response.json();
-    res.json(data.items || []);
+    const videoIds = (data.items || []).map((item: any) => item.id.videoId).join(',');
+    
+    if (!videoIds) {
+      return res.json([]);
+    }
+
+    // Fetch video details (including duration)
+    const videosUrl = `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${videoIds}&part=snippet,contentDetails`;
+    const videosResponse = await fetch(videosUrl);
+    const videosData = await videosResponse.json();
+    
+    res.json(videosData.items || []);
   } catch (err) {
     res.status(200).json({ error: (err as Error).message });
   }

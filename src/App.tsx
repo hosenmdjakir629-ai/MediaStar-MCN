@@ -4830,7 +4830,8 @@ function AppContent() {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 p-8 space-y-6">
             <h3 className="text-xl font-bold text-slate-900 tracking-tight">Confirm Withdrawal</h3>
             <p className="text-sm text-slate-600">
-              Are you sure you want to request a withdrawal of <strong>${withdrawalForm.amount}</strong> via <strong>{withdrawalForm.method}</strong>?
+              Are you sure you want to request a withdrawal of <strong>${withdrawalForm.amount}</strong> via <strong>{withdrawalForm.method}</strong>? 
+              A 2% fee ($ {(parseFloat(withdrawalForm.amount) * 0.02).toFixed(2)}) will be applied.
             </p>
             <div className="flex gap-4">
               <button 

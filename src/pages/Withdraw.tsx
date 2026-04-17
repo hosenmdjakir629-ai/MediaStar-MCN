@@ -19,6 +19,8 @@ export default function Withdraw() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
+  const calculateFee = (amount: number) => amount * 0.02; // Mock 2% fee
+
   const fetchWithdrawals = async () => {
     try {
       const res = await api.get("/withdraw/my");
@@ -108,7 +110,11 @@ export default function Withdraw() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white p-6 rounded-2xl max-w-sm w-full">
               <h3 className="text-lg font-semibold mb-4">Confirm Withdrawal</h3>
-              <p className="text-slate-600 mb-6">Are you sure you want to request a withdrawal of <strong className="text-slate-900">${parseFloat(amount).toLocaleString()}</strong> via <strong className="text-slate-900">{method}</strong>?</p>
+              <p className="text-slate-600 mb-6">
+                Are you sure you want to request a withdrawal of <strong className="text-slate-900">${parseFloat(amount).toLocaleString()}</strong> via <strong className="text-slate-900">{method}</strong>?
+                <br />
+                <span className="text-sm text-slate-500">Applicable fee: ${calculateFee(parseFloat(amount)).toFixed(2)}</span>
+              </p>
               <div className="flex gap-4">
                 <button onClick={() => setShowConfirm(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
                 <button onClick={performWithdrawal} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Confirm</button>

@@ -1,14 +1,68 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BarChart3, Users, Eye, DollarSign } from "lucide-react";
-import { StatCard } from "../components/StatCard";
+import api from "../lib/api";
 
 export function Analytics() {
-  // Placeholder data
-  const metrics = [
-    { title: "Total Views", value: "1.2M", icon: Eye, trend: "+15%" },
-    { title: "Total Subscribers", value: "45.2K", icon: Users, trend: "+5%" },
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/youtube/stats');
+      if (res.data.success) {
+        setStats(res.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch YouTube stats:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateHealthScore = (stats: any) => {
+    const views = parseInt(stats.statistics.viewCount);
+    const subs = parseInt(stats.statistics.subscriberCount);
+    const videos = parseInt(stats.statistics.videoCount);
+
+    // Heuristic score (0-100)
+    // 1. Engagement: Views/Subs ratio (rough engagement proxy)
+    const engagementScore = Math.min((views / (subs + 1)) * 50, 40);
+    // 2. Productivity: Videos/Time (proxy)
+    const productivityScore = Math.min(videos / 2, 30);
+    // 3. Growth: Subscriber volume (proxy)
+    const growthScore = Math.min(subs / 1000, 30);
+
+    const score = Math.round(engagementScore + productivityScore + growthScore);
+    
+    let explanation = "Your channel's health is calculated based on engagement (view-to-subscriber ratio), productivity (video output), and audience growth. ";
+    if (score > 80) explanation += "Excellent performance!";
+    else if (score > 50) explanation += "Solid growth, keep it up!";
+    else explanation += "Consider engaging more with your community to boost your score.";
+
+    return { score, explanation };
+  };
+
+  const metrics = stats ? [
+    { title: "Total Views", value: parseInt(stats.statistics.viewCount).toLocaleString(), icon: Eye, trend: "+15%" },
+    { title: "Total Subscribers", value: parseInt(stats.statistics.subscriberCount).toLocaleString(), icon: Users, trend: "+5%" },
     { title: "Total Revenue", value: "$8,450", icon: DollarSign, trend: "+12%" },
-  ];
+    { 
+      title: "Channel Health Score", 
+      value: `${calculateHealthScore(stats).score}/100`, 
+      icon: BarChart3, 
+      trend: calculateHealthScore(stats).explanation
+    },
+  ] : [];
+
+  if (isLoading) return <div className="p-6 text-white">Loading...</div>;
 
   return (
     <div className="p-6 bg-[#0D0D0D] min-h-screen text-white">

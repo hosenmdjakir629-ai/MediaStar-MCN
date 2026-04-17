@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateToken } from '../utils/jwt';
 import User from '../models/User';
+import { sendEmail } from '../utils/mailer';
 
 // Register
 export const register = async (req: Request, res: Response) => {
@@ -25,8 +26,16 @@ export const register = async (req: Request, res: Response) => {
       verificationToken
     });
 
-    // Mock sending email
-    console.log(`Sending verification email to ${email}: Token is ${verificationToken}`);
+    // Send verification email
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+    await sendEmail(
+      email,
+      'Verify Your OrbitX Account',
+      `<h1>Welcome, ${name}!</h1>
+       <p>Thank you for joining OrbitX Network LTD. Please verify your email by clicking the link below:</p>
+       <a href="${verificationUrl}">${verificationUrl}</a>
+       <p>Alternatively, you can use this token: <strong>${verificationToken}</strong></p>`
+    );
 
     res.status(201).json({
       success: true,
@@ -72,7 +81,16 @@ export const resendVerification = async (req: any, res: Response) => {
     user.verificationToken = verificationToken;
     await user.save();
 
-    console.log(`Resending verification email to ${user.email}: Token is ${verificationToken}`);
+    // Send verification email
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+    await sendEmail(
+      user.email,
+      'Verify Your OrbitX Account',
+      `<h1>Verify Your Email</h1>
+       <p>Please click the link below to verify your email:</p>
+       <a href="${verificationUrl}">${verificationUrl}</a>
+       <p>Alternatively, you can use this token: <strong>${verificationToken}</strong></p>`
+    );
 
     res.json({ success: true, msg: 'Verification email resent' });
   } catch (error: any) {
@@ -133,8 +151,17 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     await user.save();
 
-    // Mock sending email
-    console.log(`Sending password reset email to ${email}: Token is ${resetToken}`);
+    // Send password reset email
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    await sendEmail(
+      email,
+      'Password Reset Request',
+      `<h1>Password Reset Requested</h1>
+       <p>You requested a password reset. Use the link below to set a new password:</p>
+       <a href="${resetUrl}">${resetUrl}</a>
+       <p>Alternatively, use this token in the reset form: <strong>${resetToken}</strong></p>
+       <p>This token is valid for 1 hour.</p>`
+    );
 
     res.json({ success: true, msg: 'Password reset email sent' });
   } catch (error: any) {

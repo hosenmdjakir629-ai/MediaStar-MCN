@@ -20,6 +20,7 @@ import adminRoutes from './routes/adminRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import copyrightRoutes from './routes/copyrightRoutes';
 import applicationRoutes from './routes/applicationRoutes';
+import emailTemplateRoutes from './routes/emailTemplateRoutes';
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ async function startServer() {
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/copyright', copyrightRoutes);
   app.use('/api/applications', applicationRoutes);
+  app.use('/api/email-templates', emailTemplateRoutes);
 
   // API routes FIRST
   app.get('/api/health', (req, res) => {

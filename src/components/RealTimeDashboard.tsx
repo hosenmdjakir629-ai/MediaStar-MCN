@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MessageSquare, Bell, Zap } from "lucide-react";
+import api from "@/lib/api";
 
 export function RealTimeDashboard() {
   const [views, setViews] = useState(12450);
@@ -9,12 +10,25 @@ export function RealTimeDashboard() {
     { id: 2, message: "Brand deal request received", time: "15m ago" },
   ]);
 
-  // Simulate real-time updates
+  // Poll real-time updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setViews(prev => prev + Math.floor(Math.random() * 10));
-      setSubs(prev => prev + Math.floor(Math.random() * 2));
-    }, 3000);
+    const fetchRealTimeStats = async () => {
+      try {
+        const res = await api.get('/youtube/stats');
+        if (res.data.success) {
+          setViews(parseInt(res.data.data.statistics.viewCount));
+          setSubs(parseInt(res.data.data.statistics.subscriberCount));
+        }
+      } catch (error) {
+        console.error("Error polling real-time stats:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchRealTimeStats();
+
+    // Poll every 30 seconds
+    const interval = setInterval(fetchRealTimeStats, 30000);
     return () => clearInterval(interval);
   }, []);
 

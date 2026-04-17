@@ -125,6 +125,7 @@ function AppContent() {
   const [applications, setApplications] = useState<any[]>([]);
   const [isApplicationsLoading, setIsApplicationsLoading] = useState(false);
   const [reviewingApplication, setReviewingApplication] = useState<any>(null);
+  const [reviewingPayout, setReviewingPayout] = useState<any>(null);
   const [isUpdatingApplication, setIsUpdatingApplication] = useState(false);
 
   // Earnings state
@@ -163,7 +164,13 @@ function AppContent() {
   const [isEmailTemplatesLoading, setIsEmailTemplatesLoading] = useState(false);
   const [showEmailTemplateModal, setShowEmailTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
-  const [newTemplate, setNewTemplate] = useState({ name: '', subject: '', body: '', variables: ['channelName', 'message', 'inviteLink'] });
+  const [newTemplate, setNewTemplate] = useState({ 
+    name: '', 
+    subject: '', 
+    body: '', 
+    category: 'Invite' as 'Invite' | 'Application' | 'Payout' | 'Copyright' | 'Other',
+    variables: ['channelName', 'message', 'inviteLink'] 
+  });
 
   const handleSyncChannel = async () => {
     if (!inviteForm.channelUrl) {
@@ -635,10 +642,9 @@ function AppContent() {
   useEffect(() => {
     if (user && (activeTab === 'email-templates' || activeTab === 'invites') && isAdmin) {
       setIsEmailTemplatesLoading(true);
-      getDocs(collection(db, 'email_templates'))
-        .then(snapshot => {
-          const templates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setEmailTemplates(templates as any);
+      api.get('/email-templates')
+        .then(res => {
+          setEmailTemplates(res.data);
         })
         .catch(err => console.error('Error fetching email templates:', err))
         .finally(() => setIsEmailTemplatesLoading(false));
@@ -880,8 +886,13 @@ function AppContent() {
       } else if (authMode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
       } else if (authMode === 'forgot') {
-        await sendPasswordResetEmail(auth, email);
-        setAuthSuccess("Password reset email sent! Check your inbox.");
+        await api.post('/auth/forgot-password', { email });
+        setAuthSuccess("Password reset email sent! Check your inbox (Note: In this preview, the reset token is logged to the server console).");
+        setAuthMode('reset'); // Automatically switch to reset mode so they can enter the token
+      } else if (authMode === 'reset') {
+        await api.post('/auth/reset-password', { token: resetToken, password });
+        setAuthSuccess("Password reset successfully! You can now log in with your new password.");
+        setAuthMode('login');
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -911,9 +922,41 @@ function AppContent() {
     }
   };
 
-  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: string) => {
+  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: string, templateId?: string) => {
     try {
-      await api.patch(`/withdraw/${payoutId}/status`, { status: newStatus });
+      await api.patch(`/withdraw/${payoutId}/status`, { status: newStatus.toLowerCase() });
+      
+      // Send email notification
+      const payout = payouts.find(p => p.id === payoutId);
+      const creator = creators.find(c => c.id === payout?.creatorId);
+      
+      if (payout && creator) {
+        let templateData = {};
+        if (templateId) {
+          const template = emailTemplates.find(t => t.id === templateId);
+          if (template) {
+            templateData = {
+              templateSubject: template.subject,
+              templateBody: template.body
+            };
+          }
+        }
+
+        try {
+          await api.post('/notify/payout', {
+            email: creator.email,
+            name: creator.name,
+            amount: payout.amount,
+            method: payout.method,
+            status: newStatus,
+            reference: payout.reference,
+            ...templateData
+          });
+        } catch (notifyError) {
+          console.error("Failed to send payout notification:", notifyError);
+        }
+      }
+
       // Refresh payouts
       const endpoint = isAdmin ? '/withdraw/all' : '/withdraw/my';
       const res = await api.get(endpoint);
@@ -926,8 +969,11 @@ function AppContent() {
         status: item.status.charAt(0).toUpperCase() + item.status.slice(1)
       }));
       setPayouts(data);
+      setReviewingPayout(null);
+      alert(`Payout marked as ${newStatus} and notification sent.`);
     } catch (error) {
       console.error("Error updating payout status:", error);
+      alert("Failed to update payout status.");
     }
   };
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
@@ -1204,12 +1250,24 @@ function AppContent() {
 
       // Send email notification
       try {
+        let templateData = {};
+        if (reviewingApplication.templateId) {
+          const template = emailTemplates.find(t => t.id === reviewingApplication.templateId);
+          if (template) {
+            templateData = {
+              templateSubject: template.subject,
+              templateBody: template.body
+            };
+          }
+        }
+
         await api.post('/notify/application', {
           name: reviewingApplication.name,
           email: reviewingApplication.email,
           channelName: reviewingApplication.channelName,
           status: reviewingApplication.status,
-          adminNotes: reviewingApplication.adminNotes
+          adminNotes: reviewingApplication.adminNotes,
+          ...templateData
         });
       } catch (notifyError) {
         console.error("Failed to send notification:", notifyError);
@@ -1243,6 +1301,7 @@ function AppContent() {
 
   const handleSaveEmailTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!newTemplate.name || !newTemplate.subject || !newTemplate.body) {
       alert("Name, Subject, and Body are required.");
       return;
@@ -1250,33 +1309,35 @@ function AppContent() {
     
     try {
       if (editingTemplate) {
-        await updateDoc(doc(db, 'email_templates', editingTemplate.id), {
-          ...newTemplate,
-          updatedAt: serverTimestamp()
-        });
-        setEmailTemplates(emailTemplates.map(t => t.id === editingTemplate.id ? { ...t, ...newTemplate } : t));
+        const response = await api.put(`/email-templates/${editingTemplate.id}`, newTemplate);
+        setEmailTemplates(emailTemplates.map(t => t.id === editingTemplate.id ? { ...response.data, id: editingTemplate.id } : t));
+        alert("Template updated successfully!");
       } else {
-        const docRef = await addDoc(collection(db, 'email_templates'), {
-          ...newTemplate,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        setEmailTemplates([...emailTemplates, { id: docRef.id, ...newTemplate }]);
+        const response = await api.post('/email-templates', newTemplate);
+        setEmailTemplates([...emailTemplates, { ...response.data, id: response.data._id || response.data.id }]);
+        alert("Template created successfully!");
       }
       setShowEmailTemplateModal(false);
       setEditingTemplate(null);
-      setNewTemplate({ name: '', subject: '', body: '', variables: ['channelName', 'message', 'inviteLink'] });
-    } catch (error) {
+      setNewTemplate({ 
+        name: '', 
+        subject: '', 
+        body: '', 
+        category: 'Invite',
+        variables: ['channelName', 'message', 'inviteLink'] 
+      });
+    } catch (error: any) {
       console.error("Error saving email template:", error);
-      alert("Failed to save email template.");
+      alert(error.response?.data?.message || "Failed to save template. Make sure the name is unique.");
     }
   };
 
   const handleDeleteEmailTemplate = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this template?")) return;
+    if (!isAdmin || !window.confirm("Are you sure you want to delete this template?")) return;
     try {
-      await deleteDoc(doc(db, 'email_templates', id));
+      await api.delete(`/email-templates/${id}`);
       setEmailTemplates(emailTemplates.filter(t => t.id !== id));
+      alert("Template deleted successfully!");
     } catch (error) {
       console.error("Error deleting email template:", error);
       alert("Failed to delete email template.");
@@ -1453,7 +1514,8 @@ function AppContent() {
           <p className="text-slate-600 mb-8">
             {authMode === 'login' ? 'Sign in to manage your MCN dashboard.' : 
              authMode === 'signup' ? 'Create an account to join OrbitX Network LTD.' :
-             'Enter your email to reset your password.'}
+             authMode === 'forgot' ? 'Enter your email to reset your password.' :
+             'Enter your reset token and new password.'}
           </p>
 
           <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
@@ -1469,21 +1531,35 @@ function AppContent() {
                 />
               </div>
             )}
-            <div>
-              <input 
-                type="email" 
-                placeholder="Email Address" 
-                required 
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+            {authMode === 'reset' && (
+              <div>
+                <input 
+                  type="text" 
+                  placeholder="Reset Token" 
+                  required 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                />
+              </div>
+            )}
+            {authMode !== 'reset' && (
+              <div>
+                <input 
+                  type="email" 
+                  placeholder="Email Address" 
+                  required 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            )}
             {authMode !== 'forgot' && (
               <div>
                 <input 
                   type="password" 
-                  placeholder="Password" 
+                  placeholder={authMode === 'reset' ? "New Password" : "Password"}
                   required 
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
                   value={password}
@@ -1493,7 +1569,11 @@ function AppContent() {
                   <div className="text-right mt-1">
                     <button 
                       type="button"
-                      onClick={() => setAuthMode('forgot')}
+                      onClick={() => {
+                        setAuthMode('forgot');
+                        setAuthError(null);
+                        setAuthSuccess(null);
+                      }}
                       className="text-xs text-indigo-600 font-semibold hover:underline"
                     >
                       Forgot Password?
@@ -1510,7 +1590,7 @@ function AppContent() {
             )}
 
             {authSuccess && (
-              <p className="text-xs text-emerald-600 font-medium bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+              <p className="text-xs text-emerald-600 font-medium bg-emerald-50 p-2 rounded-lg border border-emerald-100 mb-2">
                 {authSuccess}
               </p>
             )}
@@ -1523,13 +1603,18 @@ function AppContent() {
               {isProcessingAuth && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
               {authMode === 'login' ? 'Sign In' : 
                authMode === 'signup' ? 'Create Account' : 
-               'Send Reset Link'}
+               authMode === 'forgot' ? 'Send Reset Link' :
+               'Reset Password'}
             </button>
             
-            {authMode === 'forgot' && (
+            {(authMode === 'forgot' || authMode === 'reset') && (
               <button 
                 type="button"
-                onClick={() => setAuthMode('login')}
+                onClick={() => {
+                  setAuthMode('login');
+                  setAuthError(null);
+                  setAuthSuccess(null);
+                }}
                 className="w-full text-slate-600 text-sm font-semibold hover:text-slate-900 transition-colors"
               >
                 Back to Login
@@ -3712,13 +3797,13 @@ function AppContent() {
                                   {(payout.status === 'Pending' || payout.status === 'Processing') && (
                                     <>
                                       <button 
-                                        onClick={() => handleUpdatePayoutStatus(payout.id, 'Paid')}
+                                        onClick={() => setReviewingPayout({ ...payout, newStatus: 'Paid', creator })}
                                         className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded text-xs font-bold hover:bg-emerald-100 transition-colors"
                                       >
                                         Approve
                                       </button>
                                       <button 
-                                        onClick={() => handleUpdatePayoutStatus(payout.id, 'Rejected')}
+                                        onClick={() => setReviewingPayout({ ...payout, newStatus: 'Rejected', creator })}
                                         className="px-3 py-1 bg-red-50 text-red-600 rounded text-xs font-bold hover:bg-red-100 transition-colors"
                                       >
                                         Reject
@@ -3751,7 +3836,13 @@ function AppContent() {
                 <button 
                   onClick={() => {
                     setEditingTemplate(null);
-                    setNewTemplate({ name: '', subject: '', body: '', variables: ['channelName', 'message', 'inviteLink'] });
+                    setNewTemplate({ 
+                      name: '', 
+                      subject: '', 
+                      body: '', 
+                      category: 'Invite',
+                      variables: ['channelName', 'message', 'inviteLink'] 
+                    });
                     setShowEmailTemplateModal(true);
                   }}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
@@ -3767,6 +3858,7 @@ function AppContent() {
                     <thead>
                       <tr className="bg-slate-50/50 border-b border-slate-100 text-sm text-slate-500">
                         <th className="px-6 py-4 font-semibold">Template Name</th>
+                        <th className="px-6 py-4 font-semibold">Category</th>
                         <th className="px-6 py-4 font-semibold">Subject</th>
                         <th className="px-6 py-4 font-semibold">Variables</th>
                         <th className="px-6 py-4 font-semibold text-right">Actions</th>
@@ -3795,6 +3887,17 @@ function AppContent() {
                               <p className="text-sm font-semibold text-slate-900">{template.name}</p>
                             </td>
                             <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                template.category === 'Invite' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                template.category === 'Application' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                template.category === 'Payout' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                template.category === 'Copyright' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}>
+                                {template.category || 'Invite'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
                               <p className="text-sm text-slate-600">{template.subject}</p>
                             </td>
                             <td className="px-6 py-4">
@@ -3815,6 +3918,7 @@ function AppContent() {
                                       name: template.name,
                                       subject: template.subject,
                                       body: template.body,
+                                      category: template.category || 'Invite',
                                       variables: template.variables || ['channelName', 'message', 'inviteLink']
                                     });
                                     setShowEmailTemplateModal(true);
@@ -4813,16 +4917,41 @@ function AppContent() {
             </div>
             <form onSubmit={handleSaveEmailTemplate} className="p-6">
               <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Template Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={newTemplate.name}
-                    onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                    placeholder="e.g., Standard Invite"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Template Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newTemplate.name}
+                      onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                      placeholder="e.g., Standard Invite"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                    <select 
+                      required
+                      value={newTemplate.category}
+                      onChange={(e) => {
+                        const cat = e.target.value as any;
+                        let vars = ['channelName', 'message', 'inviteLink'];
+                        if (cat === 'Application') vars = ['channelName', 'name', 'status', 'adminNotes'];
+                        if (cat === 'Payout') vars = ['name', 'amount', 'method', 'status', 'reference'];
+                        if (cat === 'Copyright') vars = ['name', 'videoTitle', 'claimant', 'matchType'];
+                        if (cat === 'Other') vars = ['name', 'channelName'];
+                        setNewTemplate({...newTemplate, category: cat, variables: vars});
+                      }}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    >
+                      <option value="Invite">Invite</option>
+                      <option value="Application">Application</option>
+                      <option value="Payout">Payout</option>
+                      <option value="Copyright">Copyright</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Email Subject</label>
@@ -4832,21 +4961,21 @@ function AppContent() {
                     value={newTemplate.subject}
                     onChange={(e) => setNewTemplate({...newTemplate, subject: e.target.value})}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                    placeholder="e.g., Exclusive Invitation to Join OrbitX MCN - {{channelName}}"
+                    placeholder="Subject line..."
                   />
-                  <p className="text-xs text-slate-500 mt-1">Available variables: {'{{channelName}}'}</p>
+                  <p className="text-xs text-slate-500 mt-1">Available variables: {newTemplate.variables.map(v => `{{${v}}}`).join(', ')}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Email Body (HTML)</label>
                   <textarea 
                     required
-                    rows={10}
+                    rows={8}
                     value={newTemplate.body}
                     onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm"
-                    placeholder="<p>Hello {{channelName}},</p>..."
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-xs"
+                    placeholder="HTML content..."
                   ></textarea>
-                  <p className="text-xs text-slate-500 mt-1">Available variables: {'{{channelName}}'}, {'{{message}}'}, {'{{inviteLink}}'}</p>
+                  <p className="text-xs text-slate-500 mt-1">Variables: {newTemplate.variables.map(v => `{{${v}}}`).join(', ')}</p>
                 </div>
               </div>
               
@@ -4866,6 +4995,56 @@ function AppContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Review Payout Modal */}
+      {reviewingPayout && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Confirm Payout {reviewingPayout.newStatus}</h3>
+              <button onClick={() => setReviewingPayout(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+               <p className="text-sm text-slate-600 mb-6">
+                 You are about to mark the payout of <strong>${reviewingPayout.amount}</strong> for <strong>{reviewingPayout.creator?.name}</strong> as <strong>{reviewingPayout.newStatus}</strong>.
+               </p>
+               
+               <div className="space-y-4 mb-8">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Email Template (Optional)</label>
+                    <select 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm" 
+                      value={reviewingPayout.templateId || ''} 
+                      onChange={e => setReviewingPayout({...reviewingPayout, templateId: e.target.value})}
+                    >
+                      <option value="">Default Notification</option>
+                      {emailTemplates.filter(t => t.category === 'Payout').map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+               </div>
+
+               <div className="flex justify-end gap-3">
+                 <button 
+                   onClick={() => setReviewingPayout(null)} 
+                   className="px-6 py-2.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl font-semibold transition-colors"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   onClick={() => handleUpdatePayoutStatus(reviewingPayout.id, reviewingPayout.newStatus, reviewingPayout.templateId)}
+                   className={`px-6 py-2.5 text-white rounded-xl font-semibold transition-colors shadow-md ${reviewingPayout.newStatus === 'Paid' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}
+                 >
+                   Confirm {reviewingPayout.newStatus}
+                 </button>
+               </div>
+            </div>
           </div>
         </div>
       )}
@@ -4996,6 +5175,19 @@ function AppContent() {
                       <option value="Approved">Approved</option>
                       <option value="Rejected">Rejected</option>
                       <option value="More Info Needed">More Info Needed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Email Template (Optional)</label>
+                    <select 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm" 
+                      value={reviewingApplication.templateId || ''} 
+                      onChange={e => setReviewingApplication({...reviewingApplication, templateId: e.target.value})}
+                    >
+                      <option value="">Default Notification</option>
+                      {emailTemplates.filter(t => t.category === 'Application').map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

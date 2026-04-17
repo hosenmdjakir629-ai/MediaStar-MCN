@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, DollarSign, Activity, ShieldCheck, Video, ShieldAlert, Wrench } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, Activity, ShieldCheck, Video, ShieldAlert, Wrench, Mail } from 'lucide-react';
 import MainLayout from '../layout/MainLayout';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
@@ -30,6 +30,7 @@ export default function AdminDashboard() {
     { name: 'System Logs', icon: Activity, path: '/admin/logs', color: 'text-amber-600' },
     { name: 'Fraud Detection', icon: ShieldAlert, path: '/admin/fraud', color: 'text-red-600' },
     { name: 'Manual Overrides', icon: Wrench, path: '/admin/overrides', color: 'text-slate-600' },
+    { name: 'Email Templates', icon: Mail, path: '/admin/email-templates', color: 'text-blue-600' },
   ];
 
   return (

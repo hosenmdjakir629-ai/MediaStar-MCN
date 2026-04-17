@@ -2018,6 +2018,23 @@ function AppContent() {
               )}
               {activeTab === 'analytics' && (
                 <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-[#141414] p-6 rounded-xl border border-[#262626]">
+                      <h4 className="text-[#A1A1A1] text-sm">Total Views</h4>
+                      <div className="text-2xl font-bold text-white mt-1">1.2M</div>
+                      <div className="text-emerald-500 text-xs mt-1">+15%</div>
+                    </div>
+                    <div className="bg-[#141414] p-6 rounded-xl border border-[#262626]">
+                      <h4 className="text-[#A1A1A1] text-sm">Total Subscribers</h4>
+                      <div className="text-2xl font-bold text-white mt-1">45.2K</div>
+                      <div className="text-emerald-500 text-xs mt-1">+5%</div>
+                    </div>
+                    <div className="bg-[#141414] p-6 rounded-xl border border-[#262626]">
+                      <h4 className="text-[#A1A1A1] text-sm">Total Revenue</h4>
+                      <div className="text-2xl font-bold text-white mt-1">$8.4K</div>
+                      <div className="text-emerald-500 text-xs mt-1">+12%</div>
+                    </div>
+                  </div>
                   <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
                     <h3 className="text-2xl font-bold text-slate-900 mb-2">Network Analytics</h3>
                     <p className="text-slate-500">Detailed performance metrics across all channels and regions.</p>
@@ -5723,11 +5740,17 @@ function AppContent() {
   );
 }
 
+import { Routes, Route } from 'react-router-dom';
+import { InvitePage } from './pages/InvitePage';
+
 export default function App() {
   return (
     <CurrencyProvider>
       <RegionProvider>
-        <AppContent />
+        <Routes>
+          <Route path="/invite" element={<InvitePage />} />
+          <Route path="*" element={<AppContent />} />
+        </Routes>
       </RegionProvider>
     </CurrencyProvider>
   );

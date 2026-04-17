@@ -5,6 +5,8 @@ import { authMiddleware, adminMiddleware } from '../middleware/authMiddleware';
 const router = express.Router();
 
 router.post('/', authMiddleware, adminMiddleware, inviteController.sendInvite);
+router.get('/verify', inviteController.verifyInvite);
+router.post('/accept', inviteController.acceptInvite);
 router.get('/referrals', authMiddleware, inviteController.getReferrals);
 router.post('/track', authMiddleware, inviteController.trackReferral);
 

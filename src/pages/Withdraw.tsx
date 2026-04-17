@@ -16,6 +16,8 @@ export default function Withdraw() {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("bKash");
   const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   const fetchWithdrawals = async () => {
     try {
@@ -30,11 +32,16 @@ export default function Withdraw() {
     fetchWithdrawals();
   }, []);
 
-  const handleRequest = async (e: React.FormEvent) => {
+  const initiateWithdrawal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || loading) return;
+    if (!amount) return;
+    setShowConfirm(true);
+  };
 
+  const performWithdrawal = async () => {
+    setShowConfirm(false);
     setLoading(true);
+    setAlertMsg(null);
     try {
       await api.post("/withdraw/request", {
         amount: parseFloat(amount),
@@ -42,8 +49,10 @@ export default function Withdraw() {
       });
       setAmount("");
       fetchWithdrawals();
+      setAlertMsg({ type: 'success', text: 'Withdrawal request submitted successfully!' });
     } catch (error) {
       console.error("Failed to request withdrawal:", error);
+      setAlertMsg({ type: 'error', text: 'Failed to submit withdrawal request. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -55,7 +64,7 @@ export default function Withdraw() {
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
         <h3 className="text-lg font-semibold mb-4 text-slate-800">Request Payout</h3>
-        <form onSubmit={handleRequest} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <form onSubmit={initiateWithdrawal} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Amount (USD)</label>
             <input 
@@ -88,6 +97,25 @@ export default function Withdraw() {
             {loading ? 'Processing...' : 'Request Withdrawal'}
           </button>
         </form>
+
+        {alertMsg && (
+          <div className={`mt-4 p-4 rounded-lg ${alertMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+            {alertMsg.text}
+          </div>
+        )}
+        
+        {showConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white p-6 rounded-2xl max-w-sm w-full">
+              <h3 className="text-lg font-semibold mb-4">Confirm Withdrawal</h3>
+              <p className="text-slate-600 mb-6">Are you sure you want to request a withdrawal of <strong className="text-slate-900">${parseFloat(amount).toLocaleString()}</strong> via <strong className="text-slate-900">{method}</strong>?</p>
+              <div className="flex gap-4">
+                <button onClick={() => setShowConfirm(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button onClick={performWithdrawal} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Confirm</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

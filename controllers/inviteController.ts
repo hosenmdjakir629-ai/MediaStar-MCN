@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import Referral from '../models/Referral';
+import Invite from '../models/Invite';
+import User from '../models/User';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { adminDb } from '../lib/firebaseAdmin';
 
 const transporter = nodemailer.createTransport({
@@ -17,6 +21,11 @@ export const sendInvite = async (req: Request, res: Response) => {
   const { channelName, email, message, templateId, templateSubject, templateBody } = req.body;
   
   try {
+    const token = crypto.randomBytes(32).toString('hex');
+    await Invite.create({ email, token, status: 'pending' });
+
+    const inviteLink = `${process.env.FRONTEND_URL || 'https://media-star-mcn-frho.vercel.app'}/invite?token=${token}`;
+
     let subject = `Exclusive Invitation to Join OrbitX MCN - ${channelName}`;
     let htmlBody = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -25,41 +34,20 @@ export const sendInvite = async (req: Request, res: Response) => {
           </div>
           <h2 style="color: #1f2937;">You're Invited!</h2>
           <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Hello <strong>${channelName}</strong> team,</p>
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">We have been closely following your channel's growth and we are incredibly impressed by the quality of your content. We would love to invite you to join the OrbitX Multi-Channel Network.</p>
-          
-          ${message ? `
-          <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid #4f46e5; margin: 20px 0; border-radius: 4px;">
-            <strong style="color: #374151;">A personal note from our team:</strong><br/><br/>
-            <span style="color: #4b5563; font-style: italic;">"${message}"</span>
-          </div>` : ''}
-          
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">As part of OrbitX, you'll get access to:</p>
-          <ul style="color: #4b5563; font-size: 16px; line-height: 1.5;">
-            <li>Premium Content ID protection</li>
-            <li>Exclusive brand sponsorship opportunities</li>
-            <li>Advanced analytics and AI tools</li>
-            <li>Dedicated partner support</li>
-          </ul>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">We would love to invite you to join the OrbitX Multi-Channel Network.</p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://orbitx-mcn.com/apply" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Invitation & Apply</a>
+            <a href="${inviteLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Accept Invitation</a>
           </div>
-          
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">We look forward to potentially working together to take your channel to the next level!</p>
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Best regards,<br/><strong>The OrbitX Team</strong></p>
         </div>
       `;
 
     if (templateSubject && templateBody) {
       subject = templateSubject.replace(/{{channelName}}/g, channelName);
-      
-      // Replace variables in body
-      let processedBody = templateBody
+      htmlBody = templateBody
         .replace(/{{channelName}}/g, channelName)
         .replace(/{{message}}/g, message || '')
-        .replace(/{{inviteLink}}/g, 'https://orbitx-mcn.com/apply');
-        
-      htmlBody = processedBody;
+        .replace(/{{inviteLink}}/g, inviteLink);
     }
 
     const mailOptions = {
@@ -76,6 +64,52 @@ export const sendInvite = async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Invite sent successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to send email invite' });
+  }
+};
+
+export const verifyInvite = async (req: Request, res: Response) => {
+  const { token } = req.query;
+
+  try {
+    const invite = await Invite.findOne({ token, status: 'pending' });
+
+    if (invite) {
+      res.json({ valid: true });
+    } else {
+      res.json({ valid: false });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to verify invite' });
+  }
+};
+
+export const acceptInvite = async (req: Request, res: Response) => {
+  const { token, name, password } = req.body;
+
+  try {
+    const invite = await Invite.findOne({ token, status: 'pending' });
+
+    if (!invite) {
+      return res.status(400).send("Invalid or expired token");
+    }
+
+    // Create user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      email: invite.email,
+      name,
+      password: hashedPassword,
+      role: 'creator',
+      emailVerified: true // Auto verify as they joined via invite
+    });
+
+    // Update invite status
+    invite.status = 'accepted';
+    await invite.save();
+
+    res.json({ success: true, message: 'Account created!', user });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create account' });
   }
 };
 

@@ -89,16 +89,18 @@ body {
 }
 
 .dark {
-  --background: #0D0D0D;
+  --background: #000000;
   --foreground: #FFFFFF;
-  --card: #141414;
+  --card: #0A0A0A;
   --card-foreground: #FFFFFF;
-  --popover: #1A1A1A;
+  --popover: #0A0A0A;
   --popover-foreground: #FFFFFF;
-  --primary: #FF2D2D;
-  --primary-foreground: #FFFFFF;
-  --secondary: #1A1A1A;
-  --secondary-foreground: #FFFFFF;
+  /* Gold-like primary accent */
+  --primary: #D4AF37; 
+  --primary-foreground: #000000;
+  /* Neon green secondary accent */
+  --secondary: #39FF14; 
+  --secondary-foreground: #000000;
   --muted: #1A1A1A;
   --muted-foreground: #A1A1A1;
   --accent: #1A1A1A;
@@ -106,20 +108,20 @@ body {
   --destructive: #FF2D2D;
   --border: #262626;
   --input: #262626;
-  --ring: #FF2D2D;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141414;
+  --ring: #D4AF37;
+  --chart-1: #39FF14;
+  --chart-2: #D4AF37;
+  --chart-3: #4f46e5;
+  --chart-4: #FF2D2D;
+  --chart-5: #A1A1A1;
+  --sidebar: #050505;
   --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #FF2D2D;
-  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-primary: #D4AF37;
+  --sidebar-primary-foreground: #000000;
   --sidebar-accent: #1A1A1A;
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: #262626;
-  --sidebar-ring: #FF2D2D;
+  --sidebar-ring: #D4AF37;
 }
 
 @layer base {

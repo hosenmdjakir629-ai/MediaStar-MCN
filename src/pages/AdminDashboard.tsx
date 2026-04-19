@@ -1,78 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, DollarSign, Activity, ShieldCheck, Video, ShieldAlert, Wrench, Mail } from 'lucide-react';
+import { useState } from 'react';
+import { LayoutDashboard, Users, DollarSign, Activity, ShieldCheck, Upload, FileSettings } from 'lucide-react';
 import MainLayout from '../layout/MainLayout';
-import { db } from '../lib/firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"; // Assuming these exist, if not, use plain div
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    totalCreators: 0,
-    activeApplications: 0,
-    totalRevenue: 452000,
-    systemStatus: 'Operational',
-    fraudAlerts: 3
+  const [stats] = useState({
+    totalEarnings: "$2,450,230",
+    activeCreators: "1,248",
+    pendingWithdrawals: "42",
+    systemStatus: 'Operational'
   });
 
-  useEffect(() => {
-    const q = query(collection(db, "creators"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStats(prev => ({
-        ...prev,
-        totalCreators: snapshot.size
-      }));
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const tools = [
-    { name: 'Creator Management', icon: Users, path: '/admin/creators', color: 'text-indigo-600' },
-    { name: 'Withdrawals', icon: DollarSign, path: '/admin/withdrawals', color: 'text-emerald-600' },
-    { name: 'System Logs', icon: Activity, path: '/admin/logs', color: 'text-amber-600' },
-    { name: 'Fraud Detection', icon: ShieldAlert, path: '/admin/fraud', color: 'text-red-600' },
-    { name: 'Manual Overrides', icon: Wrench, path: '/admin/overrides', color: 'text-slate-600' },
-    { name: 'Email Templates', icon: Mail, path: '/admin/email-templates', color: 'text-blue-600' },
+  const quickActions = [
+    { name: 'Upload Content', icon: Upload, path: '/content-management' },
+    { name: 'Manage Policies', icon: ShieldCheck, path: '/policy-control' },
+    { name: 'Access Creator Data', icon: Users, path: '/admin/creators' },
   ];
 
   return (
     <MainLayout>
-      <div className="p-8">
-        <h2 className="text-2xl font-bold text-slate-900 mb-8">Admin Super Dashboard</h2>
+      <div className="p-8 bg-black min-h-screen text-white">
+        <h2 className="text-3xl font-bold mb-8 tracking-tight">Admin Overview</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Creators</h3>
-            <p className="text-3xl font-bold text-slate-900 mt-2">138+</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Active Applications</h3>
-            <p className="text-3xl font-bold text-slate-900 mt-2">138+</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Revenue</h3>
-            <p className="text-3xl font-bold text-slate-900 mt-2">100K+</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Fraud Alerts</h3>
-            <p className="text-3xl font-bold text-red-600 mt-2">{stats.fraudAlerts}</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-slate-500 text-xs font-semibold uppercase tracking-wider">System Status</h3>
-            <p className="text-3xl font-bold text-emerald-600 mt-2">Active</p>
-          </div>
+        {/* --- Key Metrics --- */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          {[
+            { title: 'Total Revenue', value: stats.totalEarnings, icon: DollarSign },
+            { title: 'Active Creators', value: stats.activeCreators, icon: Users },
+            { title: 'Pending Withdrawals', value: stats.pendingWithdrawals, icon: Activity },
+            { title: 'System Status', value: stats.systemStatus, icon: ShieldCheck },
+          ].map((stat, i) => (
+            <div key={i} className="backdrop-blur-md bg-[#0A0A0A]/50 border border-white/10 p-6 rounded-2xl shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <p className="text-[#A1A1A1] text-sm font-semibold">{stat.title}</p>
+                <stat.icon className="text-[#D4AF37]" size={20} />
+              </div>
+              <p className="text-3xl font-bold text-white">{stat.value}</p>
+            </div>
+          ))}
         </div>
 
-        <h3 className="text-lg font-bold text-slate-900 mb-6">Advanced Admin Tools</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-          {tools.map((tool) => (
+        {/* --- Quick Actions --- */}
+        <h3 className="text-xl font-semibold mb-6">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {quickActions.map((action) => (
             <a 
-              key={tool.name} 
-              href={tool.path}
-              className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all flex flex-col items-center gap-4 text-center"
+              key={action.name} 
+              href={action.path}
+              className="group bg-[#0A0A0A] border border-white/10 p-8 rounded-2xl flex items-center gap-6 hover:border-[#D4AF37] transition-all"
             >
-              <div className={`p-4 rounded-xl bg-slate-50 ${tool.color}`}>
-                <tool.icon className="w-8 h-8" />
+              <div className="p-4 rounded-xl bg-white/5 group-hover:bg-[#D4AF37]/20 transition-all">
+                <action.icon className="text-[#D4AF37]" size={24} />
               </div>
-              <span className="font-semibold text-slate-900">{tool.name}</span>
+              <span className="font-semibold text-lg">{action.name}</span>
             </a>
           ))}
         </div>

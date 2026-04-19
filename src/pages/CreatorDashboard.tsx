@@ -79,7 +79,7 @@ export default function CreatorDashboard({ user }: { user: any }) {
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 bg-black min-h-screen text-white">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900">Creator Dashboard</h2>
         <button 

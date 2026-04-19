@@ -13,12 +13,44 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of the scan." }
       },
       "required": ["videoId", "riskScore", "riskLevel"]
+    },
+    "Invite": {
+      "title": "Invite",
+      "description": "Represents an invitation to become a creator.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "token": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "used"] },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "token", "status", "role"]
+    },
+    "EmailTemplate": {
+      "title": "EmailTemplate",
+      "description": "Represents an email template for invitations.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" }
+      },
+      "required": ["name", "subject", "body"]
     }
   },
   "firestore": {
     "/copyrightScans/{scanId}": {
       "schema": { "$ref": "CopyrightScan" },
       "description": "Collection of copyright scan results."
+    },
+    "/invites/{inviteId}": {
+      "schema": { "$ref": "Invite" },
+      "description": "Collection of invitations."
+    },
+    "/email_templates/{templateId}": {
+      "schema": { "$ref": "EmailTemplate" },
+      "description": "Collection of email templates."
     }
   }
 }

@@ -31,16 +31,18 @@ export const connectMongoDB = async () => {
   const mongoUri = process.env.MONGO_URI;
   
   if (!mongoUri || (!mongoUri.startsWith('mongodb://') && !mongoUri.startsWith('mongodb+srv://'))) {
-    console.warn('⚠️ Invalid or missing MONGO_URI. MongoDB connection skipped.');
+    console.error('❌ MONGO_URI is missing or invalid. Please check your environment variables.');
     return;
   }
 
   try {
-    await mongoose.connect(mongoUri);
+    console.log('⏳ Connecting to MongoDB...');
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000, // Timeout after 10s
+    });
     console.log('✅ MongoDB Connected');
   } catch (err) {
     console.error('❌ MongoDB Connection Error:', err);
-    // Exit process on connection failure if URI was provided but failed
-    process.exit(1);
+    // Do not exit, allow the app to run in a degraded state or try to reconnect
   }
 };

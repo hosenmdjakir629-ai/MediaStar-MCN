@@ -63,12 +63,13 @@ export const sendInvite = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Invite sent successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to send email invite' });
+    console.error("Failed to send invite:", error);
+    res.status(500).json({ success: false, message: 'Failed to send email invite', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
 export const verifyInvite = async (req: Request, res: Response) => {
-  const { token } = req.query;
+  const token = req.query.token as string;
 
   try {
     const invite = await Invite.findOne({ token, status: 'pending' });

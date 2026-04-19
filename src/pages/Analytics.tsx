@@ -65,21 +65,25 @@ export function Analytics() {
   if (isLoading) return <div className="p-6 text-white">Loading...</div>;
 
   return (
-    <div className="p-6 bg-[#0D0D0D] min-h-screen text-white">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-        <BarChart3 className="w-8 h-8 text-indigo-500" />
+    <div className="p-4 md:p-6 bg-black min-h-screen text-white">
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 flex items-center gap-3 tracking-tight">
+        <div className="p-2 bg-[#D4AF37]/10 rounded-lg">
+          <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-[#D4AF37]" />
+        </div>
         Analytics Overview
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
         {metrics.map((metric, index) => (
-          <div key={index} className="bg-[#141414] p-6 rounded-xl border border-[#262626]">
+          <div key={index} className="backdrop-blur-md bg-[#0A0A0A]/50 border border-white/10 p-5 md:p-6 rounded-xl md:rounded-2xl transition-all hover:bg-[#0A0A0A]/80 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[#A1A1A1]">{metric.title}</span>
-              <metric.icon className="w-6 h-6 text-indigo-500" />
+              <span className="text-xs md:text-sm text-[#A1A1A1] font-medium tracking-wide uppercase">{metric.title}</span>
+              <metric.icon className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" />
             </div>
-            <div className="text-3xl font-bold mb-2">{metric.value}</div>
-            <div className="text-sm text-emerald-500">{metric.trend}</div>
+            <div className="text-2xl md:text-3xl font-bold mb-2 tracking-tight">{metric.value}</div>
+            <div className={`text-xs md:text-sm ${metric.title === 'Channel Health Score' ? 'text-[#39FF14]' : 'text-[#39FF14]'}`}>
+              {metric.trend}
+            </div>
           </div>
         ))}
       </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AIChat } from './pages/AIChat';
 import { Dashboard } from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import CreatorDashboard from './pages/CreatorDashboard';
@@ -27,6 +28,7 @@ import {
   DollarSign,
   MailPlus,
   CheckCircle2,
+  Bot,
   Copyright,
   ShieldAlert,
   ShieldCheck,
@@ -689,7 +691,10 @@ function AppContent() {
   const [showAddAssetModal, setShowAddAssetModal] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [newAsset, setNewAsset] = useState({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '', videoContentId: '' });
+  const [newAsset, setNewAsset] = useState({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '', videoContentId: '', fileUrl: '' });
+  const [assetFile, setAssetFile] = useState<File | null>(null); // Added state
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false); // Added state
+  const [assetUploadProgress, setAssetUploadProgress] = useState(0); // Added state
   const [assetValidationErrors, setAssetValidationErrors] = useState<{ [key: string]: string }>({});
   const [isCreatingAsset, setIsCreatingAsset] = useState(false);
 
@@ -807,20 +812,46 @@ function AppContent() {
 
     setAssetValidationErrors({});
     setIsCreatingAsset(true);
+    let fileUrl = '';
+    
     try {
+      if (assetFile) {
+        setIsUploadingAsset(true);
+        const storageRef = ref(storage, `content_assets/${user.uid}/${Date.now()}_${assetFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, assetFile);
+        
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed', 
+            (snapshot) => {
+              setAssetUploadProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
+            },
+            (error) => reject(error),
+            async () => {
+              fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve();
+            }
+          );
+        });
+        setIsUploadingAsset(false);
+      }
+
       await addDoc(collection(db, 'content_id_assets'), {
         ...newAsset,
+        fileUrl,
         status: newAsset.status || 'Active',
         createdAt: serverTimestamp(),
         ownerUid: newAsset.ownerUid || user.uid
       });
       setShowAddAssetModal(false);
-      setNewAsset({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '', videoContentId: '' });
+      setNewAsset({ title: '', type: 'Audio', policy: 'Monetize', artist: '', isrc: '', status: 'Active', ownerUid: '', videoContentId: '', fileUrl: '' });
+      setAssetFile(null);
+      setAssetUploadProgress(0);
     } catch (error) {
       console.error("Error adding asset:", error);
       alert("Failed to add asset. Please try again.");
     } finally {
       setIsCreatingAsset(false);
+      setIsUploadingAsset(false);
     }
   };
 
@@ -1754,6 +1785,13 @@ function AppContent() {
             Education Hub
           </button>
           <button 
+            onClick={() => setActiveTab('ai-chat')}
+            className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'ai-chat' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <Bot className="w-5 h-5 mr-3" />
+            AI Chat
+          </button>
+          <button 
             onClick={() => setActiveTab('marketplace')}
             className={`flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'marketplace' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
           >
@@ -2188,6 +2226,9 @@ function AppContent() {
                   <RightsManagement />
                   <RightsTable rights={[]} />
                 </div>
+              )}
+              {activeTab === 'ai-chat' && (
+                <AIChat />
               )}
               {activeTab === 'dashboard' && (
             <>
@@ -5597,6 +5638,19 @@ function AppContent() {
             </div>
             <form onSubmit={handleAddAsset} className="p-8 space-y-5">
               <div className="grid grid-cols-1 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Asset Document (Optional)</label>
+                  <input 
+                    type="file" 
+                    onChange={(e) => setAssetFile(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                  />
+                  {isUploadingAsset && (
+                    <div className="w-full h-2 bg-slate-100 rounded-full mt-2">
+                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${assetUploadProgress}%` }}></div>
+                    </div>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Asset Title</label>
                   <input 

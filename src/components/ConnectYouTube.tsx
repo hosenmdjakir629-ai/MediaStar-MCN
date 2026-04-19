@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import api from "../lib/api";
 
+import { useState, useEffect } from "react";
+import api from "../lib/api";
+import { CheckCircle, XCircle, RefreshCw, AlertCircle } from "lucide-react";
+
 export default function ConnectYouTube() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
   const [channelInfo, setChannelInfo] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -25,13 +29,11 @@ export default function ConnectYouTube() {
     }
   };
 
-  const [isSyncing, setIsSyncing] = useState(false);
-
   const handleSync = async () => {
     setIsSyncing(true);
     try {
         await api.post('/youtube/sync');
-        await checkConnection(); // Refresh data after sync
+        await checkConnection();
         alert('Sync completed successfully');
     } catch (error) {
         console.error("Error syncing:", error);
@@ -45,19 +47,15 @@ export default function ConnectYouTube() {
     try {
       const response = await api.get('/youtube/auth/url');
       const { url } = response.data;
-      
       const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
-
       const handleMessage = async (event: MessageEvent) => {
         if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
           authWindow?.close();
           window.removeEventListener('message', handleMessage);
-          
           try {
-            // Save tokens/data returned from callback
             await api.post('/youtube/auth/save', { tokens: event.data.tokens });
             setIsConnected(true);
-            window.location.reload(); // Refresh to fetch updated channel info
+            window.location.reload();
           } catch (error) {
             console.error("Error saving channel info:", error);
           }
@@ -69,30 +67,38 @@ export default function ConnectYouTube() {
     }
   };
 
-  if (isLoading) return <div>Checking connection...</div>;
+  if (isLoading) return <div className="text-[#A1A1A1]">Checking connection...</div>;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <div className={`px-3 py-1 rounded-full text-sm font-medium ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${isConnected ? 'bg-[#39FF14]/10 text-[#39FF14]' : 'bg-red-500/10 text-red-500'}`}>
+          {isConnected ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
           {isConnected ? 'Connected' : 'Not Connected'}
         </div>
         {!isConnected && (
-          <button onClick={handleConnect} className="bg-red-600 text-white px-4 py-2 rounded">
+          <button onClick={handleConnect} className="bg-[#D4AF37] text-black px-6 py-2 rounded-xl font-semibold hover:bg-[#D4AF37]/90 transition-all">
             Connect YouTube Channel
           </button>
         )}
       </div>
+      
       {isConnected && channelInfo && (
-        <div className="border border-slate-200 p-4 rounded-lg">
-          <p><strong>Channel:</strong> {channelInfo.snippet.title}</p>
-          <p><strong>Subscribers:</strong> {parseInt(channelInfo.statistics.subscriberCount).toLocaleString()}</p>
+        <div className="bg-[#050505] border border-white/5 p-6 rounded-2xl flex justify-between items-center">
+            <div className="flex items-center gap-4">
+                <img src={channelInfo.snippet.thumbnails.default.url} alt="Channel" className="w-16 h-16 rounded-2xl"/>
+                <div>
+                  <p className="font-bold text-white text-lg">{channelInfo.snippet.title}</p>
+                  <p className="text-[#A1A1A1] text-sm">{parseInt(channelInfo.statistics.subscriberCount).toLocaleString()} Subscribers</p>
+                </div>
+            </div>
           <button 
             onClick={handleSync} 
             disabled={isSyncing}
-            className="bg-blue-600 text-white px-4 py-2 rounded mt-2 disabled:bg-blue-400"
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
           >
-            {isSyncing ? 'Syncing...' : 'Sync Channel Data'}
+            <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Syncing...' : 'Sync Data'}
           </button>
         </div>
       )}

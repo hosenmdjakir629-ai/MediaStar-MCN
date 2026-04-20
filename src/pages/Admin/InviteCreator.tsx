@@ -11,23 +11,35 @@ export default function InviteCreator() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth.currentUser) {
+      alert("You must be logged in to create invites.");
+      return;
+    }
     setIsLoading(true);
     try {
-      const token = uuidv4();
-      await addDoc(collection(db, "invites"), {
-        email,
-        token,
-        status: "pending",
-        role,
-        createdAt: serverTimestamp(),
+      const response = await fetch('/api/invites', { // Call the backend API route
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await auth.currentUser.getIdToken()}`
+        },
+        body: JSON.stringify({
+          email,
+          role,
+          channelName: 'OrbitX MCN'
+        })
       });
-      console.log(`Invite link: ${window.location.origin}/signup?token=${token}`);
-      // In a real app, integrate email sending here via emailService.ts
-      alert("Invite created! (Check console for link)");
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to send invite');
+      }
+
+      alert("Invite sent successfully!");
       setEmail("");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to create invite");
+      alert(`Failed to send invite: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
